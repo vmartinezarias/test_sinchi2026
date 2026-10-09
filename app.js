@@ -590,15 +590,33 @@
   start();
 })();
 
-/* Escenarios: ampliar figuras y ocultar las que no existan */
+/* Botón "Otros": ventana con escenarios, gráficas e infografías */
 (function () {
+  const otros = document.getElementById("otros");
+  if (!otros) return;
+  document.getElementById("btn-otros").addEventListener("click", () => otros.showModal());
+  document.getElementById("otros-close").addEventListener("click", () => otros.close());
+  otros.addEventListener("click", (e) => { if (e.target === otros) otros.close(); });
+
+  // cambiar de escenario
+  const seg = document.getElementById("esc-seg");
+  seg.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-esc]");
+    if (!b) return;
+    seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", x === b));
+    otros.querySelectorAll("article.esc").forEach((a) => { a.hidden = a.dataset.esc !== b.dataset.esc; });
+    otros.querySelector(".otros-body").scrollTop = 0;
+    otros.scrollTop = 0;
+  });
+
+  // ampliar figuras
   const dlg = document.createElement("dialog");
   dlg.className = "lightbox";
   dlg.innerHTML = '<img alt="">';
   document.body.appendChild(dlg);
   const big = dlg.querySelector("img");
   dlg.addEventListener("click", () => dlg.close());
-  document.addEventListener("click", (e) => {
+  otros.addEventListener("click", (e) => {
     const a = e.target.closest("a.zoom");
     if (!a) return;
     e.preventDefault();
@@ -606,7 +624,9 @@
     big.alt = (a.querySelector("img") || {}).alt || "";
     dlg.showModal();
   });
-  document.querySelectorAll("a.zoom img").forEach((img) => {
+
+  // ocultar figuras que aún no estén en el repositorio
+  otros.querySelectorAll("a.zoom img").forEach((img) => {
     img.addEventListener("error", () => { img.closest("a.zoom").hidden = true; });
   });
 })();
