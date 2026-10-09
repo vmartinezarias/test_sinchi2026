@@ -8,19 +8,44 @@
 <link rel="stylesheet" href="lib/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 <style>
-/* ---------- Escenarios (figuras e infografías) ---------- */
-.esc { padding: 16px 0; border-bottom: 1px solid var(--line); }
-.esc:last-child { border-bottom: 0; }
-.esc h2 { font-size: 17px; font-weight: 700; }
-.esc-sub { margin: 2px 0 10px; font-size: 13px; color: var(--muted); }
-.esc .zoom { display: block; margin-top: 10px; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; background: #fff; cursor: zoom-in; }
-.esc .zoom img { display: block; width: 100%; height: auto; }
-.esc .zoom:hover { border-color: var(--accent); }
-.esc-info { max-height: 260px; }
-.esc-pdf { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--accent); }
+/* ---------- Botón "Otros" y ventana de escenarios ---------- */
+.topbar { justify-content: space-between; }
+.btn-otros {
+  padding: 7px 14px; border: 1px solid var(--accent); border-radius: var(--radius-s);
+  background: var(--panel); color: var(--accent); font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.btn-otros:hover { background: var(--accent-soft); }
+.otros {
+  width: min(1180px, 96vw); max-height: 92vh; padding: 0; border: 0; border-radius: var(--radius-m);
+  background: var(--panel); color: var(--ink);
+}
+.otros::backdrop { background: rgba(10, 20, 16, .6); }
+.otros-head {
+  position: sticky; top: 0; z-index: 2; background: var(--panel);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  padding: 14px 20px; border-bottom: 1px solid var(--line);
+}
+.otros-head h2 { font-size: 19px; font-weight: 700; margin-right: auto; }
+.otros-head .seg { margin: 0; }
+.otros-close { background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); padding: 0 4px; }
+.otros-close:hover { color: var(--ink); }
+.otros-body { padding: 16px 20px 24px; }
+.esc[hidden] { display: none; }
+.esc-sub { margin: 0 0 14px; font-size: 14px; color: var(--muted); }
+.esc-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+.esc-figs { display: grid; gap: 16px; }
+.zoom { display: block; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; background: #fff; cursor: zoom-in; }
+.zoom:hover { border-color: var(--accent); }
+.zoom img { display: block; width: 100%; height: auto; }
+.esc-pdf { display: inline-block; font-size: 13px; font-weight: 600; color: var(--accent); }
 .lightbox { border: 0; padding: 0; max-width: 96vw; max-height: 94vh; background: transparent; }
 .lightbox::backdrop { background: rgba(10, 20, 16, .85); }
 .lightbox img { display: block; max-width: 96vw; max-height: 94vh; width: auto; height: auto; cursor: zoom-out; border-radius: 4px; }
+@media (max-width: 820px) {
+  .esc-grid { grid-template-columns: minmax(0, 1fr); }
+  .otros-head h2 { width: 100%; }
+  .otros-head .seg { flex: 1; }
+}
 </style>
 </head>
 <body>
@@ -29,6 +54,7 @@
     <h1>Focalización Cachicamo</h1>
     <p>Prioridades de conservación con Zonation, SINCHI 2026</p>
   </div>
+  <button type="button" class="btn-otros" id="btn-otros">Otros</button>
 </header>
 
 <main class="layout">
@@ -37,7 +63,6 @@
       <button role="tab" class="tab is-active" data-tab="capas" aria-selected="true">Capas</button>
       <button role="tab" class="tab" data-tab="veredas" aria-selected="false">Veredas</button>
       <button role="tab" class="tab" data-tab="coberturas" aria-selected="false">Coberturas</button>
-      <button role="tab" class="tab" data-tab="escenarios" aria-selected="false">Escenarios</button>
     </nav>
 
     <!-- ===================== CAPAS ===================== -->
@@ -161,37 +186,6 @@
         <div class="chart-box" id="box-cobglob"><canvas id="ch-cobglob"></canvas></div>
       </div>
     </section>
-    <!-- ===================== ESCENARIOS ===================== -->
-    <section class="tabpane" id="tab-escenarios" role="tabpanel">
-      <p class="hint">Haz clic en cualquier figura para verla en grande.</p>
-
-      <article class="esc">
-        <h2>Consolidación de corredores (CAZ2)</h2>
-        <p class="esc-sub">Zonation, escenario A1</p>
-        <a class="zoom esc-info" href="infografia_caz2.png"><img src="infografia_caz2.png" alt="Infografía del escenario CAZ2" loading="lazy"></a>
-        <a class="zoom" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.png"><img src="CAZ2_Consolidacion_Curvas_representacion_features_A1.png" alt="Curvas de representación de atributos, CAZ2" loading="lazy"></a>
-        <a class="zoom" href="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png"><img src="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png" alt="Representación en Top 5, 10 y 15 %, CAZ2" loading="lazy"></a>
-        <a class="esc-pdf" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.pdf" target="_blank" rel="noopener">Descargar curvas en PDF</a>
-      </article>
-
-      <article class="esc">
-        <h2>Expansión restaurativa de núcleos (ABF)</h2>
-        <p class="esc-sub">Zonation, escenario B1</p>
-        <a class="zoom esc-info" href="infografia_abf_expansion.png"><img src="infografia_abf_expansion.png" alt="Infografía del escenario ABF de expansión" loading="lazy"></a>
-        <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF expansión" loading="lazy"></a>
-        <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF expansión" loading="lazy"></a>
-        <a class="zoom" href="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png"><img src="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF expansión" loading="lazy"></a>
-      </article>
-
-      <article class="esc">
-        <h2>Reconexión de la matriz (ABF)</h2>
-        <p class="esc-sub">Zonation, escenario B1 con stepping stones</p>
-        <a class="zoom esc-info" href="infografia_abf_reconexion.png"><img src="infografia_abf_reconexion.png" alt="Infografía del escenario ABF de reconexión" loading="lazy"></a>
-        <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1.png"><img src="ABF_reconec_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF reconexión" loading="lazy"></a>
-        <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF reconexión" loading="lazy"></a>
-        <a class="zoom" href="ABF_reconec_Comparacion_Top_05_10_15_B1.png"><img src="ABF_reconec_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF reconexión" loading="lazy"></a>
-      </article>
-    </section>
   </aside>
 
   <div class="mapwrap">
@@ -204,6 +198,54 @@
     </div>
   </div>
 </main>
+
+<!-- ===================== OTROS: escenarios, gráficas e infografías ===================== -->
+<dialog class="otros" id="otros" aria-labelledby="otros-title">
+  <div class="otros-head">
+    <h2 id="otros-title">Escenarios de Zonation</h2>
+    <div class="seg" id="esc-seg" role="radiogroup" aria-label="Escenario">
+      <button type="button" role="radio" aria-checked="true" data-esc="caz2">Consolidación (CAZ2)</button>
+      <button type="button" role="radio" aria-checked="false" data-esc="abf_exp">Expansión de núcleos (ABF)</button>
+      <button type="button" role="radio" aria-checked="false" data-esc="abf_rec">Reconexión de matriz (ABF)</button>
+    </div>
+    <button type="button" class="otros-close" id="otros-close" aria-label="Cerrar">×</button>
+  </div>
+  <div class="otros-body">
+    <article class="esc" data-esc="caz2">
+      <p class="esc-sub">Escenario A1: consolidación de corredores. Haz clic en una figura para verla en grande.</p>
+      <div class="esc-grid">
+        <a class="zoom" href="infografia_caz2.png"><img src="infografia_caz2.png" alt="Infografía del escenario CAZ2" loading="lazy"></a>
+        <div class="esc-figs">
+          <a class="zoom" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.png"><img src="CAZ2_Consolidacion_Curvas_representacion_features_A1.png" alt="Curvas de representación de atributos, CAZ2" loading="lazy"></a>
+          <a class="zoom" href="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png"><img src="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png" alt="Representación en Top 5, 10 y 15 %, CAZ2" loading="lazy"></a>
+          <a class="esc-pdf" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.pdf" target="_blank" rel="noopener">Descargar curvas en PDF</a>
+        </div>
+      </div>
+    </article>
+    <article class="esc" data-esc="abf_exp" hidden>
+      <p class="esc-sub">Escenario B1: expansión restaurativa de núcleos. Haz clic en una figura para verla en grande.</p>
+      <div class="esc-grid">
+        <a class="zoom" href="infografia_abf_expansion.png"><img src="infografia_abf_expansion.png" alt="Infografía del escenario ABF de expansión" loading="lazy"></a>
+        <div class="esc-figs">
+          <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF expansión" loading="lazy"></a>
+          <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF expansión" loading="lazy"></a>
+          <a class="zoom" href="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png"><img src="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF expansión" loading="lazy"></a>
+        </div>
+      </div>
+    </article>
+    <article class="esc" data-esc="abf_rec" hidden>
+      <p class="esc-sub">Escenario B1: reconexión de la matriz con stepping stones. Haz clic en una figura para verla en grande.</p>
+      <div class="esc-grid">
+        <a class="zoom" href="infografia_abf_reconexion.png"><img src="infografia_abf_reconexion.png" alt="Infografía del escenario ABF de reconexión" loading="lazy"></a>
+        <div class="esc-figs">
+          <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1.png"><img src="ABF_reconec_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF reconexión" loading="lazy"></a>
+          <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF reconexión" loading="lazy"></a>
+          <a class="zoom" href="ABF_reconec_Comparacion_Top_05_10_15_B1.png"><img src="ABF_reconec_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF reconexión" loading="lazy"></a>
+        </div>
+      </div>
+    </article>
+  </div>
+</dialog>
 
 <script src="lib/leaflet.js"></script>
 <script src="lib/chart.umd.js"></script>
