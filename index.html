@@ -7,6 +7,21 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
 <link rel="stylesheet" href="lib/leaflet.css">
 <link rel="stylesheet" href="styles.css">
+<style>
+/* ---------- Escenarios (figuras e infografías) ---------- */
+.esc { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.esc:last-child { border-bottom: 0; }
+.esc h2 { font-size: 17px; font-weight: 700; }
+.esc-sub { margin: 2px 0 10px; font-size: 13px; color: var(--muted); }
+.esc .zoom { display: block; margin-top: 10px; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; background: #fff; cursor: zoom-in; }
+.esc .zoom img { display: block; width: 100%; height: auto; }
+.esc .zoom:hover { border-color: var(--accent); }
+.esc-info { max-height: 260px; }
+.esc-pdf { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--accent); }
+.lightbox { border: 0; padding: 0; max-width: 96vw; max-height: 94vh; background: transparent; }
+.lightbox::backdrop { background: rgba(10, 20, 16, .85); }
+.lightbox img { display: block; max-width: 96vw; max-height: 94vh; width: auto; height: auto; cursor: zoom-out; border-radius: 4px; }
+</style>
 </head>
 <body>
 <header class="topbar">
@@ -22,6 +37,7 @@
       <button role="tab" class="tab is-active" data-tab="capas" aria-selected="true">Capas</button>
       <button role="tab" class="tab" data-tab="veredas" aria-selected="false">Veredas</button>
       <button role="tab" class="tab" data-tab="coberturas" aria-selected="false">Coberturas</button>
+      <button role="tab" class="tab" data-tab="escenarios" aria-selected="false">Escenarios</button>
     </nav>
 
     <!-- ===================== CAPAS ===================== -->
@@ -144,6 +160,37 @@
         <h3>Mediana por cobertura y ráster</h3>
         <div class="chart-box" id="box-cobglob"><canvas id="ch-cobglob"></canvas></div>
       </div>
+    </section>
+    <!-- ===================== ESCENARIOS ===================== -->
+    <section class="tabpane" id="tab-escenarios" role="tabpanel">
+      <p class="hint">Haz clic en cualquier figura para verla en grande.</p>
+
+      <article class="esc">
+        <h2>Consolidación de corredores (CAZ2)</h2>
+        <p class="esc-sub">Zonation, escenario A1</p>
+        <a class="zoom esc-info" href="infografia_caz2.png"><img src="infografia_caz2.png" alt="Infografía del escenario CAZ2" loading="lazy"></a>
+        <a class="zoom" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.png"><img src="CAZ2_Consolidacion_Curvas_representacion_features_A1.png" alt="Curvas de representación de atributos, CAZ2" loading="lazy"></a>
+        <a class="zoom" href="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png"><img src="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png" alt="Representación en Top 5, 10 y 15 %, CAZ2" loading="lazy"></a>
+        <a class="esc-pdf" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.pdf" target="_blank" rel="noopener">Descargar curvas en PDF</a>
+      </article>
+
+      <article class="esc">
+        <h2>Expansión restaurativa de núcleos (ABF)</h2>
+        <p class="esc-sub">Zonation, escenario B1</p>
+        <a class="zoom esc-info" href="infografia_abf_expansion.png"><img src="infografia_abf_expansion.png" alt="Infografía del escenario ABF de expansión" loading="lazy"></a>
+        <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF expansión" loading="lazy"></a>
+        <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF expansión" loading="lazy"></a>
+        <a class="zoom" href="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png"><img src="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF expansión" loading="lazy"></a>
+      </article>
+
+      <article class="esc">
+        <h2>Reconexión de la matriz (ABF)</h2>
+        <p class="esc-sub">Zonation, escenario B1 con stepping stones</p>
+        <a class="zoom esc-info" href="infografia_abf_reconexion.png"><img src="infografia_abf_reconexion.png" alt="Infografía del escenario ABF de reconexión" loading="lazy"></a>
+        <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1.png"><img src="ABF_reconec_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF reconexión" loading="lazy"></a>
+        <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF reconexión" loading="lazy"></a>
+        <a class="zoom" href="ABF_reconec_Comparacion_Top_05_10_15_B1.png"><img src="ABF_reconec_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF reconexión" loading="lazy"></a>
+      </article>
     </section>
   </aside>
 
