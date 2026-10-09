@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Focalización Cachicamo: prioridades de conservación</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <h1>Focalización Cachicamo</h1>
+    <p>Prioridades de conservación con Zonation, SINCHI 2026</p>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="panel" aria-label="Panel de control">
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="tab is-active" data-tab="capas" aria-selected="true">Capas</button>
+      <button role="tab" class="tab" data-tab="veredas" aria-selected="false">Veredas</button>
+      <button role="tab" class="tab" data-tab="coberturas" aria-selected="false">Coberturas</button>
+    </nav>
+
+    <!-- ===================== CAPAS ===================== -->
+    <section class="tabpane is-active" id="tab-capas" role="tabpanel">
+      <div class="group">
+        <h2>Corredor</h2>
+        <div class="layer layer--corridor" id="corridor-card">
+          <label class="layer-head">
+            <input type="checkbox" id="corr-on" checked>
+            <span class="sw sw--corridor" aria-hidden="true"></span>
+            <span class="layer-name">Consolidación CAZ2 ≥ umbral</span>
+          </label>
+          <div class="threshold">
+            <label for="corr-thr">Umbral de corte</label>
+            <div class="thr-row">
+              <input type="range" id="corr-thr" min="0" max="1" step="0.01" value="0.75">
+              <input type="number" id="corr-thr-num" min="0" max="1" step="0.01" value="0.75" aria-label="Umbral numérico">
+            </div>
+            <p class="corr-area"><strong id="corr-ha">—</strong> <span id="corr-pct"></span></p>
+          </div>
+          <div class="opacity"><label>Opacidad <input type="range" class="op" data-layer="corridor" min="0" max="1" step="0.05" value="0.85"></label></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Prioridad Zonation</h2>
+        <div id="raster-list"></div>
+        <div class="legend-turbo">
+          <div class="turbo-bar" id="turbo-bar"></div>
+          <div class="turbo-labels"><span>0 baja</span><span>0,5</span><span>1 alta</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Coberturas</h2>
+        <div class="layer">
+          <label class="layer-head">
+            <input type="checkbox" id="cob-on">
+            <span class="sw sw--multi" aria-hidden="true"></span>
+            <span class="layer-name">Coberturas agrupadas</span>
+          </label>
+          <div class="opacity"><label>Opacidad <input type="range" class="op" data-layer="cob" min="0" max="1" step="0.05" value="0.75"></label></div>
+          <div class="cob-actions">
+            <button type="button" class="link" id="cob-all">Todas</button>
+            <button type="button" class="link" id="cob-none">Ninguna</button>
+          </div>
+          <ul class="cob-list" id="cob-list"></ul>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Referencia</h2>
+        <div class="layer">
+          <label class="layer-head">
+            <input type="checkbox" id="ver-on" checked>
+            <span class="sw sw--line" aria-hidden="true"></span>
+            <span class="layer-name">Límites de veredas</span>
+          </label>
+        </div>
+        <fieldset class="basemaps">
+          <legend>Mapa base</legend>
+          <label><input type="radio" name="base" value="sat" checked> Satélite</label>
+          <label><input type="radio" name="base" value="light"> Claro</label>
+          <label><input type="radio" name="base" value="osm"> Calles</label>
+          <label><input type="radio" name="base" value="none"> Ninguno</label>
+        </fieldset>
+      </div>
+      <p class="hint">Haz clic en el mapa para ver los valores de cada capa en ese punto.</p>
+    </section>
+
+    <!-- ===================== VEREDAS ===================== -->
+    <section class="tabpane" id="tab-veredas" role="tabpanel">
+      <div class="group">
+        <label class="field">Vereda
+          <select id="ver-select"><option value="">Elige una vereda o haz clic en el mapa</option></select>
+        </label>
+        <div class="seg" id="raster-seg" role="radiogroup" aria-label="Ráster a analizar"></div>
+        <label class="check"><input type="checkbox" id="filter-cob"> Calcular solo dentro de las coberturas activas</label>
+      </div>
+
+      <div id="ver-empty" class="empty">
+        <p>Elige una vereda para calcular sus estadísticas. Todo se calcula aquí mismo, en tu navegador, con los píxeles de 30 m.</p>
+      </div>
+
+      <div id="ver-detail" hidden>
+        <div class="ver-title">
+          <h2 id="ver-name"></h2>
+          <p id="ver-sub"></p>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><span id="kpi-area"></span><small id="kpi-area-lbl"></small></div>
+          <div class="kpi kpi--corr"><span id="kpi-corr"></span><small id="kpi-corr-lbl">en corredor</small></div>
+        </div>
+        <h3>Estadísticos por ráster</h3>
+        <div class="table-wrap"><table class="stats" id="ver-table"></table></div>
+        <h3>Distribución de valores</h3>
+        <div class="chart-box"><canvas id="ch-hist"></canvas></div>
+        <h3>Área por cobertura</h3>
+        <div class="chart-box" id="box-cobarea"><canvas id="ch-cobarea"></canvas></div>
+        <h3>Mediana por cobertura</h3>
+        <div class="chart-box" id="box-cobmed"><canvas id="ch-cobmed"></canvas></div>
+      </div>
+
+      <div class="group group--compare">
+        <h2>Comparar veredas</h2>
+        <label class="field">Indicador
+          <select id="cmp-metric"></select>
+        </label>
+        <div class="chart-box" id="box-cmp"><canvas id="ch-cmp"></canvas></div>
+        <button type="button" class="btn" id="csv-btn">Descargar tabla de veredas (CSV)</button>
+      </div>
+    </section>
+
+    <!-- ===================== COBERTURAS ===================== -->
+    <section class="tabpane" id="tab-coberturas" role="tabpanel">
+      <div class="group">
+        <p class="hint">Estadísticos calculados en la malla nativa (EPSG:9377) con el script de Python, por cobertura agrupada.</p>
+        <div class="seg" id="cob-seg" role="radiogroup" aria-label="Ráster"></div>
+        <div class="table-wrap"><table class="stats" id="cob-table"></table></div>
+        <h3>Mediana por cobertura y ráster</h3>
+        <div class="chart-box" id="box-cobglob"><canvas id="ch-cobglob"></canvas></div>
+      </div>
+    </section>
+  </aside>
+
+  <div class="mapwrap">
+    <div id="map" aria-label="Mapa"></div>
+    <div class="loader" id="loader">
+      <div class="loader-card">
+        <p id="loader-msg">Cargando capas…</p>
+        <div class="bar"><div id="loader-bar"></div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="lib/leaflet.js"></script>
+<script src="lib/chart.umd.js"></script>
+<script src="lib/fflate.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
