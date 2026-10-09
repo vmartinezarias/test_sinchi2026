@@ -589,3 +589,24 @@
   }
   start();
 })();
+
+/* Escenarios: ampliar figuras y ocultar las que no existan */
+(function () {
+  const dlg = document.createElement("dialog");
+  dlg.className = "lightbox";
+  dlg.innerHTML = '<img alt="">';
+  document.body.appendChild(dlg);
+  const big = dlg.querySelector("img");
+  dlg.addEventListener("click", () => dlg.close());
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a.zoom");
+    if (!a) return;
+    e.preventDefault();
+    big.src = a.getAttribute("href");
+    big.alt = (a.querySelector("img") || {}).alt || "";
+    dlg.showModal();
+  });
+  document.querySelectorAll("a.zoom img").forEach((img) => {
+    img.addEventListener("error", () => { img.closest("a.zoom").hidden = true; });
+  });
+})();
