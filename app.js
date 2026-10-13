@@ -25,17 +25,10 @@
   const SCALE = 65534;
 
   // Capas de corredores de vida (GeoJSON en data/). Si un archivo no existe, su fila se oculta.
+  // Corredores de vida: un GeoJSON en EPSG:4326. Se busca en data/ y, si no está, en la raíz del repo.
   const CV_LAYERS = [
-    { id: "corredores", file: "data/cv_corredores.geojson", nombre: "Corredores de vida", on: true,
+    { id: "corredores", files: ["data/corredores.geojson", "corredores.geojson"], nombre: "Corredores de vida", on: true,
       style: { color: "#ff3df2", weight: 2.5, fillColor: "#ff3df2", fillOpacity: 0.28 } },
-    { id: "rectangulos_global", file: "data/cv_rectangulos_global.geojson", nombre: "Rectángulo por corredor", on: false,
-      style: { color: "#ffffff", weight: 2, dashArray: "7 5", fillOpacity: 0 } },
-    { id: "rectangulos_tramos", file: "data/cv_rectangulos_tramos.geojson", nombre: "Rectángulos por tramo", on: false,
-      style: { color: "#ffe14d", weight: 1.6, fillColor: "#ffe14d", fillOpacity: 0.08 } },
-    { id: "anclajes_bloques", file: "data/cv_anclajes_bloques.geojson", nombre: "Anclajes (bloques)", on: false,
-      style: { color: "#ff8c1a", weight: 1.2, fillColor: "#ff8c1a", fillOpacity: 0.55 } },
-    { id: "parques", file: "data/cv_parques.geojson", nombre: "Parques Nacionales", on: false,
-      style: { color: "#7fd3ff", weight: 2, fillColor: "#7fd3ff", fillOpacity: 0.12 } },
   ];
   const CV_LABELS = {
     corredor_id: "Corredor", tramo: "Tramo", anc_id: "Anclaje", parque: "Parque", nombre: "Nombre", categoria: "Categoría",
@@ -270,9 +263,12 @@
     await Promise.all(CV_LAYERS.map(async (c) => {
       const row = document.querySelector(`.layer[data-cv="${c.id}"]`);
       try {
-        const r = await fetch(c.file);
-        if (!r.ok) throw new Error(r.status);
-        const data = await r.json();
+        let data = null;
+        for (const f of c.files) {
+          const r = await fetch(f);
+          if (r.ok) { data = await r.json(); break; }
+        }
+        if (!data) throw new Error("no encontrado");
         const layer = L.geoJSON(data, { pane: "cvPane", interactive: false, style: cvStyle(c, 1) });
         S.cv[c.id] = { layer, data };
         if (c.on) layer.addTo(map);
