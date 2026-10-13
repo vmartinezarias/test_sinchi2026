@@ -1,8 +1,19 @@
 /* Focalización Cachicamo: visor y estadísticas en el navegador.
    Los rásters llegan como uint16 (0 = sin dato; valor = (v-1)/65534) en malla EPSG:3857.
    Coberturas y veredas llegan como uint8 en la misma malla. */
+/* Protección: si el index.html quedó con la página repetida (o el navegador tiene en caché
+   una versión así), se eliminan las copias sobrantes y la app se ejecuta una sola vez. */
+(function () {
+  const sobrantes = (sel) => [...document.querySelectorAll(sel)].slice(1).forEach((el) => el.remove());
+  sobrantes("body > header.topbar");
+  sobrantes("body > main.layout");
+  sobrantes("body > dialog#otros");
+})();
+
 (function () {
   "use strict";
+  if (window.__cachicamoApp) return;   // ya se está ejecutando (app.js cargado dos veces)
+  window.__cachicamoApp = true;
 
   // ------------------------------------------------------------------ estado
   const S = {
@@ -24,7 +35,6 @@
   };
   const SCALE = 65534;
 
-  // Capas de corredores de vida (GeoJSON en data/). Si un archivo no existe, su fila se oculta.
   // Corredores de vida: un GeoJSON en EPSG:4326. Se busca en data/ y, si no está, en la raíz del repo.
   const CV_LAYERS = [
     { id: "corredores", files: ["data/corredores.geojson", "corredores.geojson"], nombre: "Corredores de vida", on: true,
@@ -155,7 +165,7 @@
     basemaps.osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" });
     setBase("sat");
 
-    const panes = [["rasterPane", 402], ["cobPane", 403], ["corrPane", 405], ["cvPane", 430], ["verPane", 450]];
+    const panes = [["rasterPane", 402], ["cobPane", 403], ["corrPane", 405], ["cvPane", 430], ["ccPane", 435], ["verPane", 450]];
     panes.forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
 
     // Coberturas
@@ -214,58 +224,13 @@
     const c = val("caz2", i);
     rows += `<tr><td>Corredor (≥ ${fmt(S.thr, 2)})</td><td>${c == null ? '<span class="muted">sin dato</span>' : (c >= S.thr ? "Sí" : "No")}</td></tr>`;
     rows += `<tr><td>Cobertura</td><td>${cob ? cob.nombre : '<span class="muted">—</span>'}</td></tr>`;
-    const cvHtml = cvAt(e.latlng);
+    const cvHtml = cvAt(e.latlng) + ccAt(e.latlng);
     const html = `<div class="pop"><h4>${ver ? "Vereda " + ver.nombre : "Fuera de las veredas"}</h4>
       <table>${rows}</table>${cvHtml}
       ${ver ? `<button type="button" data-vid="${ver.vid}">Ver estadísticas de la vereda</button>` : ""}</div>`;
     const pop = L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
     const btn = pop.getElement().querySelector("button[data-vid]");
     if (btn) btn.addEventListener("click", () => { selectVereda(+btn.dataset.vid, true); showTab("veredas"); map.closePopup(); });
-  }
-
-  // ------------------------------------------------------------------ reproyección EPSG:9377 -> grados
-  // Si un GeoJSON llega en metros (MAGNA-SIRGAS / Origen-Nacional, EPSG:9377, como lo exporta QGIS
-  // por defecto), se convierte aquí a longitud/latitud con la fórmula inversa de Transversa de Mercator.
-  const TM9377 = { a: 6378137, f: 1 / 298.257222101, lat0: 4, lon0: -73, k0: 0.9992, x0: 5000000, y0: 2000000 };
-  function tm9377ToLonLat(x, y) {
-    const P = TM9377, d2r = Math.PI / 180;
-    const e2 = P.f * (2 - P.f), ep2 = e2 / (1 - e2);
-    const e4 = e2 * e2, e6 = e4 * e2;
-    const Mf = (phi) => P.a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi
-      - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
-      + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi)
-      - (35 * e6 / 3072) * Math.sin(6 * phi));
-    const M = Mf(P.lat0 * d2r) + (y - P.y0) / P.k0;
-    const mu = M / (P.a * (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256));
-    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
-    const phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu)
-      + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
-      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
-    const s = Math.sin(phi1), c = Math.cos(phi1), t = Math.tan(phi1);
-    const C1 = ep2 * c * c, T1 = t * t;
-    const N1 = P.a / Math.sqrt(1 - e2 * s * s);
-    const R1 = P.a * (1 - e2) / Math.pow(1 - e2 * s * s, 1.5);
-    const D = (x - P.x0) / (N1 * P.k0);
-    const lat = phi1 - (N1 * t / R1) * (D * D / 2
-      - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24
-      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
-    const lon = P.lon0 * d2r + (D - (1 + 2 * T1 + C1) * D ** 3 / 6
-      + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / c;
-    return [lon / d2r, lat / d2r];
-  }
-  function firstCoord(c) { while (Array.isArray(c) && Array.isArray(c[0])) c = c[0]; return c; }
-  // Devuelve el GeoJSON en grados; si ya lo está, lo deja igual.
-  function asLonLat(gj) {
-    const feats = gj.type === "FeatureCollection" ? gj.features : [gj];
-    const f0 = feats.find((f) => f.geometry && f.geometry.coordinates);
-    if (!f0) return gj;
-    const p = firstCoord(f0.geometry.coordinates);
-    if (Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90) return gj;   // ya está en grados
-    const conv = (c) => (typeof c[0] === "number" ? tm9377ToLonLat(c[0], c[1]) : c.map(conv));
-    feats.forEach((f) => { if (f.geometry && f.geometry.coordinates) f.geometry.coordinates = conv(f.geometry.coordinates); });
-    delete gj.crs;
-    console.info("GeoJSON en metros: convertido de EPSG:9377 a grados.");
-    return gj;
   }
 
   // ------------------------------------------------------------------ corredores de vida
@@ -349,7 +314,7 @@
         let data = null;
         for (const f of c.files) {
           const r = await fetch(f);
-          if (r.ok) { data = asLonLat(await r.json()); break; }
+          if (r.ok) { data = await r.json(); break; }
         }
         if (!data) throw new Error("no encontrado");
         asegurarGrados(data);
@@ -623,12 +588,311 @@
     });
   }
 
+  // ------------------------------------------------------------------ coberturas dentro de los corredores
+  // GeoJSON de polígonos de cobertura recortados a los corredores. Cada polígono se rasteriza
+  // en la malla de 30 m (centro de píxel dentro del polígono) y se calcula la mediana del
+  // modelo elegido. Los polígonos más pequeños que un píxel toman el valor del píxel de su centro.
+  const CC_FILES = ["data/coberturas_corredores.geojson", "coberturas_corredores.geojson"];
+  const CC_COLS = { cob_agrup_: "Cobertura agrupada", Cob_restau: "Restauración" };
+  const CC_RAMP = ["#fff3b0", "#fecc5c", "#fd8d3c", "#e31a1c", "#9e0016"];
+  const CC = {
+    status: "idle", data: null, feats: [], layer: null, renderer: null,
+    model: null, col: "cob_agrup_", active: {}, topN: null, op: 0.85, shown: [], meds: {}, minArea: 1,
+  };
+
+  function rampColor(t) {
+    t = Math.min(1, Math.max(0, t)) * (CC_RAMP.length - 1);
+    const i = Math.min(CC_RAMP.length - 2, Math.floor(t)), f = t - i;
+    const a = parseInt(CC_RAMP[i].slice(1), 16), b = parseInt(CC_RAMP[i + 1].slice(1), 16);
+    const ch = (sh) => Math.round(((a >> sh) & 255) * (1 - f) + ((b >> sh) & 255) * f);
+    return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+  }
+
+  // lon/lat -> coordenadas de píxel (fraccionarias) en la malla EPSG:3857
+  function lonLatToPx(lon, lat) {
+    const g = S.meta.grid;
+    const x = R_EARTH * lon * Math.PI / 180;
+    const y = R_EARTH * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+    return [(x - g.x0) / g.res, (g.y0 - y) / g.res];
+  }
+
+  // Rasteriza un Polygon/MultiPolygon: índices de los píxeles cuyo centro cae dentro (regla par-impar).
+  function rasterizeGeom(geom) {
+    const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
+    const rings = [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    polys.forEach((p) => p.forEach((ring) => {
+      const r = ring.map(([lon, lat]) => lonLatToPx(lon, lat));
+      r.forEach(([x, y]) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; });
+      rings.push(r);
+    }));
+    const out = [];
+    const rStart = Math.max(0, Math.floor(y0)), rEnd = Math.min(S.H - 1, Math.ceil(y1));
+    const xs = [];
+    for (let row = rStart; row <= rEnd; row++) {
+      const yc = row + 0.5;
+      xs.length = 0;
+      for (const r of rings) {
+        for (let k = 0, m = r.length - 1; k < r.length; m = k++) {
+          const [xa, ya] = r[m], [xb, yb] = r[k];
+          if ((ya <= yc) !== (yb <= yc)) xs.push(xa + (yc - ya) * (xb - xa) / (yb - ya));
+        }
+      }
+      if (xs.length < 2) continue;
+      xs.sort((p, q) => p - q);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const c0 = Math.max(0, Math.ceil(xs[k] - 0.5)), c1 = Math.min(S.W - 1, Math.floor(xs[k + 1] - 0.5));
+        for (let c = c0; c <= c1; c++) out.push(row * S.W + c);
+      }
+    }
+    let fallback = false;
+    if (!out.length && isFinite(x0)) {          // polígono más pequeño que un píxel: píxel del centro
+      const c = Math.floor((x0 + x1) / 2), rr = Math.floor((y0 + y1) / 2);
+      if (c >= 0 && rr >= 0 && c < S.W && rr < S.H) { out.push(rr * S.W + c); fallback = true; }
+    }
+    return { pix: Int32Array.from(out), fallback };
+  }
+
+  function ccMedians(model) {
+    if (CC.meds[model]) return CC.meds[model];
+    const d = S.data[model];
+    const res = CC.feats.map((ft) => {
+      const vals = [];
+      for (const i of ft.pix) { const v = d[i]; if (v) vals.push((v - 1) / SCALE); }
+      return vals.length ? describe(Float32Array.from(vals), vals.length) : null;
+    });
+    CC.meds[model] = res;
+    return res;
+  }
+
+  function ccClassesOf(col) {
+    const m = new Map();
+    CC.feats.forEach((ft) => { const k = ft.props[col] ?? "(sin dato)"; m.set(k, (m.get(k) || 0) + 1); });
+    return [...m.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0]), "es", { numeric: true }));
+  }
+  function ccColorOf(col, k) {
+    if (col !== "cob_agrup_") return null;
+    const c = S.meta.coberturas.find((x) => x.nombre === k);
+    return c ? c.color : null;
+  }
+
+  async function ccLoad() {
+    if (CC.status !== "idle") return;
+    CC.status = "loading";
+    try {
+      let data = null;
+      for (const f of CC_FILES) {
+        const r = await fetch(f);
+        if (r.ok) { data = await r.json(); break; }
+      }
+      if (!data) throw new Error("no se encontró data/coberturas_corredores.geojson");
+      asegurarGrados(data);
+      CC.data = data;
+      CC.feats = data.features.filter((f) => f.geometry).map((f, k) => {
+        const { pix, fallback } = rasterizeGeom(f.geometry);
+        const p = f.properties || {};
+        return { k, f, props: p, pix, fallback, area: p.area_ha ?? p.area_ha_1 ?? null, layer: null };
+      });
+      const byFeat = new Map(CC.feats.map((ft) => [ft.f, ft]));
+      CC.renderer = L.canvas({ pane: "ccPane", padding: 0.3 });
+      CC.layer = L.geoJSON({ type: "FeatureCollection", features: CC.feats.map((ft) => ft.f) }, {
+        renderer: CC.renderer, pane: "ccPane", interactive: false,
+        style: { weight: 0.6, color: "#5b0010", fillOpacity: 0.85, fillColor: "#fff3b0" },
+        onEachFeature: (f, l) => { const ft = byFeat.get(f); if (ft) ft.layer = l; },
+      });
+      CC.model = S.meta.rasters[0].id;
+      CC.status = "ready";
+      ccInitUI();
+      ccSetCol(CC.col);
+      if ($("#cc-on").checked) CC.layer.addTo(map);
+      $("#cc-loading").hidden = true; $("#cc-ui").hidden = false;
+    } catch (err) {
+      console.error(err);
+      CC.status = "error";
+      $("#cc-loading").innerHTML = `<p>No se pudieron cargar las coberturas de los corredores: ${err.message}.</p>`;
+    }
+  }
+
+  function ccInitUI() {
+    const seg = $("#cc-model");
+    seg.innerHTML = S.meta.rasters.map((r) => `<button type="button" role="radio" aria-checked="${r.id === CC.model}" data-id="${r.id}">${r.nombre}</button>`).join("");
+    seg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-id]"); if (!b) return;
+      seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", x === b));
+      CC.model = b.dataset.id; CC.topN = null; ccRender();
+    });
+    const cs = $("#cc-col");
+    cs.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-col]"); if (!b) return;
+      cs.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", x === b));
+      ccSetCol(b.dataset.col);
+    });
+    $("#cc-classes").addEventListener("change", (e) => {
+      if (e.target.dataset.k == null) return;
+      CC.active[e.target.dataset.k] = e.target.checked; CC.topN = null; ccRender();
+    });
+    const setAll = (on) => { Object.keys(CC.active).forEach((k) => { CC.active[k] = on; }); $("#cc-classes").querySelectorAll("input").forEach((i) => { i.checked = on; }); CC.topN = null; ccRender(); };
+    $("#cc-all").addEventListener("click", () => setAll(true));
+    $("#cc-none").addEventListener("click", () => setAll(false));
+    $("#cc-top").addEventListener("input", (e) => { CC.topN = +e.target.value; ccPaint(); ccSummary(); });
+    $("#cc-on").addEventListener("change", (e) => { if (e.target.checked) CC.layer.addTo(map); else map.removeLayer(CC.layer); });
+    $("#cc-op").addEventListener("input", (e) => { CC.op = +e.target.value; ccPaint(); });
+    $("#cc-rank").addEventListener("click", (e) => {
+      const tr = e.target.closest("tr[data-k]"); if (!tr) return;
+      const ft = CC.feats[+tr.dataset.k];
+      if (ft && ft.layer) {
+        if (!map.hasLayer(CC.layer)) { $("#cc-on").checked = true; CC.layer.addTo(map); }
+        map.fitBounds(ft.layer.getBounds(), { padding: [60, 60], maxZoom: 15 });
+        const fl = L.geoJSON(ft.f, { pane: "verPane", interactive: false, style: { color: "#00e5ff", weight: 4, fill: false } }).addTo(map);
+        setTimeout(() => map.removeLayer(fl), 2500);
+      }
+    });
+    $("#cc-csv").addEventListener("click", ccCsv);
+    $("#cc-minarea").addEventListener("change", (e) => { CC.minArea = +e.target.value; CC.topN = null; ccRender(); });
+  }
+
+  function ccSetCol(col) {
+    CC.col = col; CC.active = {}; CC.topN = null;
+    const list = ccClassesOf(col);
+    list.forEach(([k]) => { CC.active[k] = true; });
+    $("#cc-classes").innerHTML = list.map(([k, n]) => {
+      const c = ccColorOf(col, k);
+      return `<li><label><input type="checkbox" data-k="${k}" checked>${c ? `<span class="sw" style="background:${c}"></span>` : ""}${k}<span class="n">${n}</span></label></li>`;
+    }).join("");
+    ccRender();
+  }
+
+  const ccAreaOk = (ft) => !CC.minArea || (ft.area != null ? ft.area : ft.pix.length * 0.09) >= CC.minArea;
+  // Polígonos filtrados (tipo y área mínima) y con dato, ordenados de mayor a menor mediana
+  function ccFiltered() {
+    const meds = ccMedians(CC.model);
+    return CC.feats.filter((ft) => CC.active[ft.props[CC.col] ?? "(sin dato)"] && meds[ft.k] && ccAreaOk(ft))
+      .map((ft) => ({ ft, st: meds[ft.k] }))
+      .sort((a, b) => (b.st.mediana - a.st.mediana) || ((b.ft.area || 0) - (a.ft.area || 0)));   // empate: el más grande primero
+  }
+
+  function ccRender() {
+    if (CC.status !== "ready") return;
+    CC.shown = ccFiltered();
+    const n = CC.shown.length, top = $("#cc-top");
+    top.max = Math.max(1, n);
+    if (CC.topN == null || CC.topN > n) CC.topN = Math.max(1, Math.round(n * 0.1));
+    top.value = CC.topN;
+    top.disabled = !n;
+    ccPaint(); ccSummary();
+  }
+
+  // Colores: los N con mayor mediana en rampa amarillo-rojo (más rojo = mayor);
+  // el resto de los filtrados en gris claro; los no filtrados se ocultan.
+  function ccPaint() {
+    if (CC.status !== "ready") return;
+    const rank = new Map();
+    CC.shown.forEach((d, i) => rank.set(d.ft.k, i));
+    const N = Math.min(CC.topN || 0, CC.shown.length), op = CC.op;
+    const hi = N ? CC.shown[0].st.mediana : 0, lo = N ? CC.shown[N - 1].st.mediana : 0;
+    CC.feats.forEach((ft) => {
+      if (!ft.layer) return;
+      const i = rank.get(ft.k);
+      if (i == null) { ft.layer.setStyle({ opacity: 0, fillOpacity: 0 }); return; }
+      if (i < N) {
+        const m = CC.shown[i].st.mediana, t = hi > lo ? (m - lo) / (hi - lo) : 1;
+        ft.layer.setStyle({ fillColor: rampColor(0.25 + 0.75 * t), color: "#5b0010", weight: 0.8, opacity: op, fillOpacity: 0.9 * op });
+      } else {
+        ft.layer.setStyle({ fillColor: "#e9ecea", color: "#8a948f", weight: 0.4, opacity: 0.7 * op, fillOpacity: 0.8 * op });
+      }
+    });
+    $("#cc-top-lbl").textContent = N ? `${N.toLocaleString("es-CO")} de ${CC.shown.length.toLocaleString("es-CO")}` : "—";
+    $("#cc-leg-min").textContent = N ? `${fmt(lo)} (menor del grupo)` : "menor mediana";
+    $("#cc-leg-max").textContent = N ? `${fmt(hi)} (mayor)` : "mayor mediana";
+  }
+
+  function ccSummary() {
+    const shown = CC.shown, N = Math.min(CC.topN || 0, shown.length);
+    const sumA = (arr) => arr.reduce((s, d) => s + (d.ft.area || 0), 0);
+    const r = rasterById(CC.model);
+    $("#cc-kpi-n").textContent = shown.length.toLocaleString("es-CO");
+    $("#cc-kpi-n-lbl").textContent = `polígonos filtrados con dato de ${r.corto}, ${fmtHa(sumA(shown))}`;
+    $("#cc-kpi-top").textContent = N.toLocaleString("es-CO");
+    $("#cc-kpi-top-lbl").textContent = `en rojo, con mediana ≥ ${N ? fmt(shown[N - 1].st.mediana) : "—"}, ${fmtHa(sumA(shown.slice(0, N)))}`;
+
+    // resumen por tipo: mediana con todos los píxeles del tipo
+    const d = S.data[CC.model], groups = new Map();
+    shown.forEach((x, i) => {
+      const k = x.ft.props[CC.col] ?? "(sin dato)";
+      if (!groups.has(k)) groups.set(k, { n: 0, top: 0, area: 0, vals: [] });
+      const gr = groups.get(k);
+      gr.n++; if (i < N) gr.top++; gr.area += x.ft.area || 0;
+      for (const p of x.ft.pix) { const v = d[p]; if (v) gr.vals.push((v - 1) / SCALE); }
+    });
+    const rows = [...groups.entries()].map(([k, gr]) => ({ k, ...gr, st: describe(Float32Array.from(gr.vals), gr.vals.length) }))
+      .sort((a, b) => b.st.mediana - a.st.mediana);
+    $("#cc-sum").innerHTML = "<thead><tr><th>Tipo</th><th>Polígonos</th><th>En rojo</th><th>Área</th><th>Mediana</th><th>Máx</th></tr></thead><tbody>" +
+      rows.map((x) => {
+        const c = ccColorOf(CC.col, x.k);
+        return `<tr><td>${c ? `<span class="dot" style="background:${c}"></span>` : ""}${x.k}</td><td>${x.n.toLocaleString("es-CO")}</td><td>${x.top.toLocaleString("es-CO")}</td><td>${fmtHa(x.area)}</td><td><strong>${fmt(x.st.mediana)}</strong></td><td>${fmt(x.st.max)}</td></tr>`;
+      }).join("") + "</tbody>";
+
+    const otro = CC.col === "cob_agrup_" ? "Cob_restau" : "cob_agrup_";
+    $("#cc-rank").innerHTML = `<thead><tr><th>#</th><th>${CC_COLS[CC.col]}</th><th>${CC_COLS[otro]}</th><th>Mediana</th><th>Área</th></tr></thead><tbody>` +
+      shown.slice(0, 20).map((x, i) => `<tr data-k="${x.ft.k}"><td>${i + 1}</td><td><span class="sq" style="background:${i < N ? rampColor(0.25 + 0.75 * (N > 1 ? (x.st.mediana - shown[N - 1].st.mediana) / ((shown[0].st.mediana - shown[N - 1].st.mediana) || 1) : 1)) : "#e9ecea"}"></span>${x.ft.props[CC.col] ?? "—"}</td><td>${x.ft.props[otro] ?? "—"}</td><td><strong>${fmt(x.st.mediana)}</strong></td><td>${fmtHa(x.ft.area)}</td></tr>`).join("") + "</tbody>";
+
+    const nFb = shown.filter((x) => x.ft.fallback).length;
+    const nTipo = CC.feats.filter((ft) => CC.active[ft.props[CC.col] ?? "(sin dato)"]);
+    const nPeq = nTipo.filter((ft) => !ccAreaOk(ft)).length;
+    const nSin = nTipo.filter((ft) => ccAreaOk(ft) && !ccMedians(CC.model)[ft.k]).length;
+    const partes = [];
+    if (nPeq) partes.push(`${nPeq.toLocaleString("es-CO")} polígonos de los tipos elegidos quedan fuera por ser menores al área mínima.`);
+    if (nSin) partes.push(`${nSin.toLocaleString("es-CO")} no tienen dato de ${r.corto} (fuera de lo que prioriza ese modelo) y no se cuentan.`);
+    if (nFb) partes.push(`${nFb.toLocaleString("es-CO")} son más pequeños que un píxel de 30 m y toman el valor del píxel de su centro.`);
+    $("#cc-note").textContent = partes.join(" ");
+  }
+
+  function ccCsv() {
+    const models = S.meta.rasters;
+    const cols = ["fid", "cob_agrup_", "Cob_restau", "cobertura_", "area_ha", "n_pix", "menor_que_pixel"];
+    models.forEach((m) => ["mediana", "sd", "min", "max"].forEach((k) => cols.push(`${m.archivo.replace(".tif", "")}_${k}`)));
+    cols.push(`rango_${rasterById(CC.model).archivo.replace(".tif", "")}`);
+    const all = Object.fromEntries(models.map((m) => [m.id, ccMedians(m.id)]));
+    const q = (v) => (v == null ? "" : `"${String(v).replace(/"/g, '""')}"`);
+    const lines = [cols.join(",")];
+    CC.shown.forEach((x, i) => {
+      const p = x.ft.props;
+      const row = [p.fid ?? x.ft.k, q(p.cob_agrup_), q(p.Cob_restau), q(p.cobertura_), x.ft.area == null ? "" : x.ft.area.toFixed(4), x.ft.pix.length, x.ft.fallback ? "si" : "no"];
+      models.forEach((m) => { const s = all[m.id][x.ft.k]; [s && s.mediana, s && s.sd, s && s.min, s && s.max].forEach((v) => row.push(v == null ? "" : v.toFixed(6))); });
+      row.push(i + 1);
+      lines.push(row.join(","));
+    });
+    const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `coberturas_corredores_${CC.model}_${CC.col}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // Para el popup del clic en el mapa
+  function ccAt(latlng) {
+    if (CC.status !== "ready" || !map.hasLayer(CC.layer)) return "";
+    const rank = new Map(); CC.shown.forEach((d, i) => rank.set(d.ft.k, i));
+    const hit = CC.feats.find((ft) => rank.has(ft.k) && ft.layer && ft.layer.getBounds().contains(latlng) && pointInGeom(latlng.lng, latlng.lat, ft.f.geometry));
+    if (!hit) return "";
+    const st = ccMedians(CC.model)[hit.k], p = hit.props, i = rank.get(hit.k);
+    return `<h5>Cobertura en corredor</h5><table>
+      <tr><td>Cobertura agrupada</td><td>${p.cob_agrup_ ?? "—"}</td></tr>
+      <tr><td>Restauración</td><td>${p.Cob_restau ?? "—"}</td></tr>
+      <tr><td>Cobertura</td><td>${p.cobertura_ ?? "—"}</td></tr>
+      <tr><td>Mediana ${rasterById(CC.model).corto}</td><td>${st ? fmt(st.mediana) : "—"}</td></tr>
+      <tr><td>Puesto</td><td>${(i + 1).toLocaleString("es-CO")} de ${CC.shown.length.toLocaleString("es-CO")}</td></tr>
+      <tr><td>Área</td><td>${fmtHa(hit.area)}</td></tr></table>`;
+  }
+
   // ------------------------------------------------------------------ UI
   function showTab(name) {
     document.querySelectorAll(".tab").forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle("is-active", on); t.setAttribute("aria-selected", on); });
     document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("is-active", p.id === "tab-" + name));
     if (name === "veredas") { renderVereda(); renderCompare(); }
     if (name === "coberturas") renderCobTab();
+    if (name === "corredores") ccLoad();
   }
 
   function segmented(container, current, onPick) {
@@ -774,6 +1038,8 @@
 
 /* Botón "Otros": ventana con escenarios, gráficas e infografías */
 (function () {
+  if (window.__cachicamoOtros) return;
+  window.__cachicamoOtros = true;
   const otros = document.getElementById("otros");
   if (!otros) return;
   document.getElementById("btn-otros").addEventListener("click", () => otros.showModal());
