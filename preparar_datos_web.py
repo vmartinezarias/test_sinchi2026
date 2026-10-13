@@ -8,7 +8,7 @@ y genera en <SALIDA>/data/:
   - veredas.u8.gz     id de vereda por píxel (0 = fuera de veredas)
   - veredas.geojson   contornos de veredas en EPSG:4326 (para dibujar)
   - corredores.geojson corredores de vida en EPSG:4326 (si existe el GPKG)
-  - coberturas_corredores.geojson  versión ligera (simplificada a 1 m, columnas útiles) para la pestaña Corredores
+  - coberturas_corredores.geojson.gz  versión ligera y comprimida (simplificada a 1 m) para la pestaña Corredores
   - meta.json         malla, nombres, colores y estadísticas globales por cobertura
 
 Todo se rasteriza en la malla nativa (EPSG:9377, 30 m) y luego se reproyecta
@@ -104,9 +104,14 @@ def aligerar_coberturas_corredores(origen, datos):
     g["geometry"] = g.geometry.simplify(1)
     g = g[~g.geometry.is_empty & g.geometry.notna()]
     g = g[[c for c in COLS_COB_CORREDORES if c in g.columns] + ["area_ha", "geometry"]]
-    g.to_crs(4326).to_file(datos / "coberturas_corredores.geojson", driver="GeoJSON", COORDINATE_PRECISION=6)
-    tam = (datos / "coberturas_corredores.geojson").stat().st_size / 1e6
-    print(f"  coberturas en corredores: {len(g)} polígonos, {tam:.1f} MB")
+    plano = datos / "coberturas_corredores.geojson"
+    g.to_crs(4326).to_file(plano, driver="GeoJSON", COORDINATE_PRECISION=6)
+    # versión comprimida, la que carga la web (~6 veces más liviana)
+    with open(plano, "rb") as fi, gzip.open(datos / "coberturas_corredores.geojson.gz", "wb", compresslevel=9) as fo:
+        fo.write(fi.read())
+    plano.unlink()
+    tam = (datos / "coberturas_corredores.geojson.gz").stat().st_size / 1e6
+    print(f"  coberturas en corredores: {len(g)} polígonos, {tam:.1f} MB comprimido")
 
 
 def guardar_gz(ruta, arr):
