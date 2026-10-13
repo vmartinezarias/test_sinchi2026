@@ -592,7 +592,32 @@
   // GeoJSON de polígonos de cobertura recortados a los corredores. Cada polígono se rasteriza
   // en la malla de 30 m (centro de píxel dentro del polígono) y se calcula la mediana del
   // modelo elegido. Los polígonos más pequeños que un píxel toman el valor del píxel de su centro.
-  const CC_FILES = ["data/coberturas_corredores.geojson", "coberturas_corredores.geojson"];
+  // Se prefiere la versión comprimida (.geojson.gz, ~1 MB); si no existe, se usa el .geojson.
+  const CC_FILES = ["data/coberturas_corredores.geojson.gz", "data/coberturas_corredores.geojson", "coberturas_corredores.geojson"];
+
+  // Descarga mostrando el avance; descomprime si el archivo viene en gzip.
+  async function fetchJsonProgress(url, onProgress) {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const total = +r.headers.get("Content-Length") || 0;
+    let buf;
+    if (r.body && r.body.getReader) {
+      const reader = r.body.getReader(), parts = [];
+      let n = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value); n += value.length;
+        onProgress(n, total);
+      }
+      buf = new Uint8Array(n);
+      let o = 0; for (const p of parts) { buf.set(p, o); o += p.length; }
+    } else {
+      buf = new Uint8Array(await r.arrayBuffer());
+    }
+    if (buf[0] === 0x1f && buf[1] === 0x8b) buf = fflate.gunzipSync(buf);
+    return JSON.parse(new TextDecoder("utf-8").decode(buf));
+  }
   const CC_COLS = { cob_agrup_: "Cobertura agrupada", Cob_restau: "Restauración" };
   const CC_RAMP = ["#fff3b0", "#fecc5c", "#fd8d3c", "#e31a1c", "#9e0016"];
   const CC = {
@@ -680,12 +705,18 @@
     if (CC.status !== "idle") return;
     CC.status = "loading";
     try {
+      const msg = $("#cc-loading p");
+      const mb = (b) => (b / 1e6).toLocaleString("es-CO", { maximumFractionDigits: 1 }) + " MB";
       let data = null;
       for (const f of CC_FILES) {
-        const r = await fetch(f);
-        if (r.ok) { data = await r.json(); break; }
+        data = await fetchJsonProgress(f, (n, total) => {
+          msg.textContent = `Descargando las coberturas de los corredores… ${mb(n)}` + (total ? ` de ${mb(total)}` : "");
+        });
+        if (data) break;
       }
-      if (!data) throw new Error("no se encontró data/coberturas_corredores.geojson");
+      if (!data) throw new Error("no se encontró data/coberturas_corredores.geojson(.gz)");
+      msg.textContent = "Calculando las medianas de cada polígono…";
+      await new Promise((res) => setTimeout(res, 30));   // deja que se pinte el mensaje
       asegurarGrados(data);
       CC.data = data;
       CC.feats = data.features.filter((f) => f.geometry).map((f, k) => {
