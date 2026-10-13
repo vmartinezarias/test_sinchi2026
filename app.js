@@ -18,10 +18,32 @@
     selRaster: null,
     cobRaster: null,
     layers: {},
+    cv: {},              // capas de corredores de vida
     charts: {},
     cache: {},
   };
   const SCALE = 65534;
+
+  // Capas de corredores de vida (GeoJSON en data/). Si un archivo no existe, su fila se oculta.
+  const CV_LAYERS = [
+    { id: "corredores", file: "data/cv_corredores.geojson", nombre: "Corredores de vida", on: true,
+      style: { color: "#ff3df2", weight: 2.5, fillColor: "#ff3df2", fillOpacity: 0.28 } },
+    { id: "rectangulos_global", file: "data/cv_rectangulos_global.geojson", nombre: "Rectángulo por corredor", on: false,
+      style: { color: "#ffffff", weight: 2, dashArray: "7 5", fillOpacity: 0 } },
+    { id: "rectangulos_tramos", file: "data/cv_rectangulos_tramos.geojson", nombre: "Rectángulos por tramo", on: false,
+      style: { color: "#ffe14d", weight: 1.6, fillColor: "#ffe14d", fillOpacity: 0.08 } },
+    { id: "anclajes_bloques", file: "data/cv_anclajes_bloques.geojson", nombre: "Anclajes (bloques)", on: false,
+      style: { color: "#ff8c1a", weight: 1.2, fillColor: "#ff8c1a", fillOpacity: 0.55 } },
+    { id: "parques", file: "data/cv_parques.geojson", nombre: "Parques Nacionales", on: false,
+      style: { color: "#7fd3ff", weight: 2, fillColor: "#7fd3ff", fillOpacity: 0.12 } },
+  ];
+  const CV_LABELS = {
+    corredor_id: "Corredor", tramo: "Tramo", anc_id: "Anclaje", parque: "Parque", nombre: "Nombre", categoria: "Categoría",
+    area_ha: "Área (ha)", area_rect_ha: "Área rectángulo (ha)", area_sel_ha: "Área seleccionada (ha)", llenado: "Llenado",
+    largo_m: "Largo (m)", ancho_m: "Ancho (m)", m_CAZ2_rank_media: "CAZ2 rank (media)", m_CAZ2_frac_top: "CAZ2 fracción top",
+    m_04_Current_percentil_GLOBAL: "Corriente global (percentil)", m_costo01: "Costo (0 a 1)", m_CCuc2024: "CCuc 2024",
+    m_GHMv3_90m: "Huella humana GHM v3",
+  };
   const R_EARTH = 6378137;
 
   const $ = (s) => document.querySelector(s);
@@ -139,7 +161,7 @@
     basemaps.osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" });
     setBase("sat");
 
-    const panes = [["rasterPane", 402], ["cobPane", 403], ["corrPane", 405], ["verPane", 450]];
+    const panes = [["rasterPane", 402], ["cobPane", 403], ["corrPane", 405], ["cvPane", 430], ["verPane", 450]];
     panes.forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
 
     // Coberturas
@@ -198,12 +220,67 @@
     const c = val("caz2", i);
     rows += `<tr><td>Corredor (≥ ${fmt(S.thr, 2)})</td><td>${c == null ? '<span class="muted">sin dato</span>' : (c >= S.thr ? "Sí" : "No")}</td></tr>`;
     rows += `<tr><td>Cobertura</td><td>${cob ? cob.nombre : '<span class="muted">—</span>'}</td></tr>`;
+    const cvHtml = cvAt(e.latlng);
     const html = `<div class="pop"><h4>${ver ? "Vereda " + ver.nombre : "Fuera de las veredas"}</h4>
-      <table>${rows}</table>
+      <table>${rows}</table>${cvHtml}
       ${ver ? `<button type="button" data-vid="${ver.vid}">Ver estadísticas de la vereda</button>` : ""}</div>`;
     const pop = L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
     const btn = pop.getElement().querySelector("button[data-vid]");
     if (btn) btn.addEventListener("click", () => { selectVereda(+btn.dataset.vid, true); showTab("veredas"); map.closePopup(); });
+  }
+
+  // ------------------------------------------------------------------ corredores de vida
+  function pointInRing(lng, lat, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function pointInGeom(lng, lat, g) {
+    if (!g) return false;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+    return polys.some((rings) => pointInRing(lng, lat, rings[0]) && !rings.slice(1).some((h) => pointInRing(lng, lat, h)));
+  }
+  function cvValue(k, v) {
+    if (typeof v !== "number") return v == null ? "—" : String(v);
+    if (Number.isInteger(v)) return v.toLocaleString("es-CO");
+    return k.endsWith("_ha") || k.endsWith("_m") ? v.toLocaleString("es-CO", { maximumFractionDigits: 0 }) : fmt(v);
+  }
+  // Atributos de los corredores de vida visibles bajo el punto, para el popup
+  function cvAt(latlng) {
+    let html = "";
+    CV_LAYERS.forEach((c) => {
+      const L_ = S.cv[c.id];
+      if (!L_ || !map.hasLayer(L_.layer)) return;
+      L_.data.features.filter((f) => pointInGeom(latlng.lng, latlng.lat, f.geometry)).forEach((f) => {
+        const rows = Object.entries(f.properties).map(([k, v]) => `<tr><td>${CV_LABELS[k] || k}</td><td>${cvValue(k, v)}</td></tr>`).join("");
+        html += `<h5>${c.nombre}</h5><table>${rows}</table>`;
+      });
+    });
+    return html;
+  }
+  function cvStyle(c, op) {
+    const s = Object.assign({}, c.style);
+    s.opacity = op; s.fillOpacity = (c.style.fillOpacity || 0) * op;
+    return s;
+  }
+  async function loadCV() {
+    await Promise.all(CV_LAYERS.map(async (c) => {
+      const row = document.querySelector(`.layer[data-cv="${c.id}"]`);
+      try {
+        const r = await fetch(c.file);
+        if (!r.ok) throw new Error(r.status);
+        const data = await r.json();
+        const layer = L.geoJSON(data, { pane: "cvPane", interactive: false, style: cvStyle(c, 1) });
+        S.cv[c.id] = { layer, data };
+        if (c.on) layer.addTo(map);
+      } catch (err) {
+        if (row) row.hidden = true;   // archivo ausente: se oculta la fila
+      }
+    }));
+    if (!Object.keys(S.cv).length) $("#cv-group").hidden = true;
   }
 
   // ------------------------------------------------------------------ índices por vereda
@@ -499,6 +576,25 @@
     // leyenda turbo
     $("#turbo-bar").style.background = `linear-gradient(90deg, ${Array.from({ length: 11 }, (_, k) => turboCss(k / 10)).join(",")})`;
 
+    // corredores de vida
+    $("#cv-list").innerHTML = CV_LAYERS.map((c) => `
+      <div class="layer" data-cv="${c.id}">
+        <label class="layer-head"><input type="checkbox" data-cv="${c.id}" ${c.on ? "checked" : ""}>
+          <span class="sw sw--cv" aria-hidden="true" style="border-color:${c.style.color};background:${c.style.fillOpacity ? c.style.fillColor + "66" : (c.style.color === "#ffffff" ? "#55625b" : "transparent")}${c.style.dashArray ? ";border-style:dashed" : ""}"></span>
+          <span class="layer-name">${c.nombre}</span></label>
+        <div class="opacity"><label>Opacidad <input type="range" class="op-cv" data-cv="${c.id}" min="0" max="1" step="0.05" value="1"></label></div>
+      </div>`).join("");
+    $("#cv-list").addEventListener("change", (e) => {
+      const id = e.target.dataset.cv, L_ = S.cv[id];
+      if (!id || !L_ || e.target.type !== "checkbox") return;
+      if (e.target.checked) L_.layer.addTo(map); else map.removeLayer(L_.layer);
+    });
+    $("#cv-list").addEventListener("input", (e) => {
+      if (!e.target.classList.contains("op-cv")) return;
+      const c = CV_LAYERS.find((x) => x.id === e.target.dataset.cv), L_ = S.cv[c.id];
+      if (L_) L_.layer.setStyle(cvStyle(c, +e.target.value));
+    });
+
     // lista de rásters
     $("#raster-list").innerHTML = S.meta.rasters.map((r, k) => `
       <div class="layer">
@@ -579,6 +675,7 @@
         onEachFeature: (f, l) => l.bindTooltip(f.properties.nombre, { sticky: true, className: "ver-tip" }),
       }).addTo(map);
       initUI();
+      await loadCV();
       $("#loader").hidden = true;
     } catch (err) {
       console.error(err);
