@@ -28,7 +28,8 @@
   // Corredores de vida: un GeoJSON en EPSG:4326. Se busca en data/ y, si no está, en la raíz del repo.
   const CV_LAYERS = [
     { id: "corredores", files: ["data/corredores.geojson", "corredores.geojson"], nombre: "Corredores de vida", on: true,
-      style: { color: "#ff3df2", weight: 2.5, fillColor: "#ff3df2", fillOpacity: 0.28 } },
+      style: { color: "#ff2bd6", weight: 3, fillColor: "#ff2bd6", fillOpacity: 0.3 },
+      halo: { color: "#1a0718", weight: 7, opacity: 0.75, fill: false } },
   ];
   const CV_LABELS = {
     corredor_id: "Corredor", tramo: "Tramo", anc_id: "Anclaje", parque: "Parque", nombre: "Nombre", categoria: "Categoría",
@@ -222,6 +223,51 @@
     if (btn) btn.addEventListener("click", () => { selectVereda(+btn.dataset.vid, true); showTab("veredas"); map.closePopup(); });
   }
 
+  // ------------------------------------------------------------------ reproyección EPSG:9377 -> grados
+  // Si un GeoJSON llega en metros (MAGNA-SIRGAS / Origen-Nacional, EPSG:9377, como lo exporta QGIS
+  // por defecto), se convierte aquí a longitud/latitud con la fórmula inversa de Transversa de Mercator.
+  const TM9377 = { a: 6378137, f: 1 / 298.257222101, lat0: 4, lon0: -73, k0: 0.9992, x0: 5000000, y0: 2000000 };
+  function tm9377ToLonLat(x, y) {
+    const P = TM9377, d2r = Math.PI / 180;
+    const e2 = P.f * (2 - P.f), ep2 = e2 / (1 - e2);
+    const e4 = e2 * e2, e6 = e4 * e2;
+    const Mf = (phi) => P.a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi
+      - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+      + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi)
+      - (35 * e6 / 3072) * Math.sin(6 * phi));
+    const M = Mf(P.lat0 * d2r) + (y - P.y0) / P.k0;
+    const mu = M / (P.a * (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256));
+    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+    const phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu)
+      + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+    const s = Math.sin(phi1), c = Math.cos(phi1), t = Math.tan(phi1);
+    const C1 = ep2 * c * c, T1 = t * t;
+    const N1 = P.a / Math.sqrt(1 - e2 * s * s);
+    const R1 = P.a * (1 - e2) / Math.pow(1 - e2 * s * s, 1.5);
+    const D = (x - P.x0) / (N1 * P.k0);
+    const lat = phi1 - (N1 * t / R1) * (D * D / 2
+      - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+    const lon = P.lon0 * d2r + (D - (1 + 2 * T1 + C1) * D ** 3 / 6
+      + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / c;
+    return [lon / d2r, lat / d2r];
+  }
+  function firstCoord(c) { while (Array.isArray(c) && Array.isArray(c[0])) c = c[0]; return c; }
+  // Devuelve el GeoJSON en grados; si ya lo está, lo deja igual.
+  function asLonLat(gj) {
+    const feats = gj.type === "FeatureCollection" ? gj.features : [gj];
+    const f0 = feats.find((f) => f.geometry && f.geometry.coordinates);
+    if (!f0) return gj;
+    const p = firstCoord(f0.geometry.coordinates);
+    if (Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90) return gj;   // ya está en grados
+    const conv = (c) => (typeof c[0] === "number" ? tm9377ToLonLat(c[0], c[1]) : c.map(conv));
+    feats.forEach((f) => { if (f.geometry && f.geometry.coordinates) f.geometry.coordinates = conv(f.geometry.coordinates); });
+    delete gj.crs;
+    console.info("GeoJSON en metros: convertido de EPSG:9377 a grados.");
+    return gj;
+  }
+
   // ------------------------------------------------------------------ corredores de vida
   function pointInRing(lng, lat, ring) {
     let inside = false;
@@ -254,6 +300,43 @@
     });
     return html;
   }
+  // EPSG:9377 (MAGNA-SIRGAS 2018 / Origen Nacional, Transversa de Mercator) -> [lon, lat] en grados.
+  // Permite cargar GeoJSON exportados desde QGIS sin reproyectar a EPSG:4326.
+  function tm9377ToLonLat(x, y) {
+    const a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), ep2 = e2 / (1 - e2);
+    const k0 = 0.9992, lat0 = 4 * Math.PI / 180, lon0 = -73 * Math.PI / 180, FE = 5000000, FN = 2000000;
+    const e4 = e2 * e2, e6 = e4 * e2;
+    const Mf = (p) => a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * p - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * p)
+      + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * p) - (35 * e6 / 3072) * Math.sin(6 * p));
+    const M = Mf(lat0) + (y - FN) / k0;
+    const mu = M / (a * (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256));
+    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+    const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+    const s = Math.sin(p1), c = Math.cos(p1), t = Math.tan(p1);
+    const C1 = ep2 * c * c, T1 = t * t, N1 = a / Math.sqrt(1 - e2 * s * s), R1 = a * (1 - e2) / Math.pow(1 - e2 * s * s, 1.5);
+    const D = (x - FE) / (N1 * k0);
+    const lat = p1 - (N1 * t / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+    const lon = lon0 + (D - (1 + 2 * T1 + C1) * D ** 3 / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / c;
+    return [lon * 180 / Math.PI, lat * 180 / Math.PI];
+  }
+  // Si el GeoJSON viene en metros (EPSG:9377), lo pasa a grados en el mismo objeto.
+  function asegurarGrados(data) {
+    let first = null;
+    const find = (c) => { if (first) return; if (typeof c[0] === "number") first = c; else c.forEach(find); };
+    data.features.forEach((f) => f.geometry && find(f.geometry.coordinates));
+    if (!first || (Math.abs(first[0]) <= 180 && Math.abs(first[1]) <= 90)) return data;   // ya está en grados
+    const crs = JSON.stringify(data.crs || "");
+    if (crs !== '""' && !crs.includes("9377")) console.warn("GeoJSON proyectado en un CRS distinto de EPSG:9377; se asume 9377:", crs);
+    const conv = (c) => (typeof c[0] === "number" ? tm9377ToLonLat(c[0], c[1]) : c.map(conv));
+    data.features.forEach((f) => { if (f.geometry) f.geometry.coordinates = conv(f.geometry.coordinates); });
+    delete data.crs;
+    return data;
+  }
+  function haloStyle(c, op) {
+    return Object.assign({}, c.halo, { opacity: c.halo.opacity * op });
+  }
   function cvStyle(c, op) {
     const s = Object.assign({}, c.style);
     s.opacity = op; s.fillOpacity = (c.style.fillOpacity || 0) * op;
@@ -266,11 +349,15 @@
         let data = null;
         for (const f of c.files) {
           const r = await fetch(f);
-          if (r.ok) { data = await r.json(); break; }
+          if (r.ok) { data = asLonLat(await r.json()); break; }
         }
         if (!data) throw new Error("no encontrado");
-        const layer = L.geoJSON(data, { pane: "cvPane", interactive: false, style: cvStyle(c, 1) });
-        S.cv[c.id] = { layer, data };
+        asegurarGrados(data);
+        // el halo se crea primero para que quede debajo de la línea de color
+        const halo = c.halo ? L.geoJSON(data, { pane: "cvPane", interactive: false, style: haloStyle(c, 1) }) : null;
+        const main = L.geoJSON(data, { pane: "cvPane", interactive: false, style: cvStyle(c, 1) });
+        const layer = L.featureGroup(halo ? [halo, main] : [main]);
+        S.cv[c.id] = { layer, data, main, halo };
         if (c.on) layer.addTo(map);
       } catch (err) {
         if (row) row.hidden = true;   // archivo ausente: se oculta la fila
@@ -588,7 +675,9 @@
     $("#cv-list").addEventListener("input", (e) => {
       if (!e.target.classList.contains("op-cv")) return;
       const c = CV_LAYERS.find((x) => x.id === e.target.dataset.cv), L_ = S.cv[c.id];
-      if (L_) L_.layer.setStyle(cvStyle(c, +e.target.value));
+      if (!L_) return;
+      L_.main.setStyle(cvStyle(c, +e.target.value));
+      if (L_.halo) L_.halo.setStyle(haloStyle(c, +e.target.value));
     });
 
     // lista de rásters
