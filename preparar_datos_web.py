@@ -7,7 +7,8 @@ y genera en <SALIDA>/data/:
   - coberturas.u8.gz  código de cobertura por píxel (0 = sin cobertura)
   - veredas.u8.gz     id de vereda por píxel (0 = fuera de veredas)
   - veredas.geojson   contornos de veredas en EPSG:4326 (para dibujar)
-  - cv_<capa>.geojson capas de corredores de vida en EPSG:4326 (si existe el GPKG)
+  - corredores.geojson corredores de vida en EPSG:4326 (si existe el GPKG)
+  - coberturas_corredores.geojson  versión ligera (simplificada a 1 m, columnas útiles) para la pestaña Corredores
   - meta.json         malla, nombres, colores y estadísticas globales por cobertura
 
 Todo se rasteriza en la malla nativa (EPSG:9377, 30 m) y luego se reproyecta
@@ -34,6 +35,7 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling, tr
 ENTRADA = Path("/home/vmartinezarias/Dropbox/SINCHI2026/OUTPUTS_VMMA/Focalizacion/Salidas_pruebas")
 VEREDAS = ENTRADA / "veredas.gpkg"
 CORREDORES_VIDA = ENTRADA / "corredores_vida.gpkg"   # si no existe, se omite
+COB_CORREDORES = ENTRADA / "coberturas_corredores.geojson"   # coberturas recortadas a los corredores (GeoJSON o GPKG)
 SALIDA = ENTRADA / "web_focalizacion"   # carpeta del sitio (la que se sube a GitHub)
 
 RASTERS = [
@@ -64,44 +66,47 @@ COLORES_COB = {
 COLOR_DEFECTO = "#9a9a9a"
 
 
-# Capas del GPKG de corredores de vida: capa -> (columnas que se publican, tolerancia de simplificación en m)
-CAPAS_CV = {
-    "corredores": (["corredor_id", "m_CAZ2_rank_media", "m_CAZ2_frac_top", "m_04_Current_percentil_GLOBAL",
-                    "m_costo01", "m_CCuc2024", "m_GHMv3_90m"], 2),
-    "rectangulos_global": (["corredor_id", "area_rect_ha", "area_sel_ha", "llenado", "largo_m", "ancho_m",
-                            "m_CAZ2_rank_media", "m_CAZ2_frac_top"], 0),
-    "rectangulos_tramos": (["corredor_id", "tramo", "area_rect_ha", "area_sel_ha", "llenado", "largo_m", "ancho_m",
-                            "m_CAZ2_rank_media", "m_CAZ2_frac_top"], 0),
-    "anclajes_bloques": (["anc_id", "parque", "area_ha"], 2),
-    "parques": (["nombre", "categoria"], 20),
-}
+# Columnas de la capa "corredores" que se publican en la web
+COLS_CORREDORES = ["corredor_id", "m_CAZ2_rank_media", "m_CAZ2_frac_top", "m_04_Current_percentil_GLOBAL",
+                   "m_costo01", "m_CCuc2024", "m_GHMv3_90m"]
 
 
 def exportar_corredores_vida(gpkg, datos):
-    """Exporta cada capa del GPKG de corredores de vida a GeoJSON (EPSG:4326)."""
+    """Exporta la capa 'corredores' del GPKG a data/corredores.geojson (EPSG:4326)."""
     if not Path(gpkg).exists():
         print(f"  (sin {Path(gpkg).name}: se omiten los corredores de vida)")
         return
-    import pyogrio
-    disponibles = [c[0] for c in pyogrio.list_layers(gpkg)]
-    for capa, (cols, tol) in CAPAS_CV.items():
-        if capa not in disponibles:
-            print(f"  [AVISO] {capa} no está en {Path(gpkg).name}")
-            continue
-        g = gpd.read_file(gpkg, layer=capa)
-        g["geometry"] = g.geometry.make_valid()
-        if capa != "parques" and "area_rect_ha" not in cols:
-            g["area_ha"] = g.geometry.area / 1e4
-            if "area_ha" not in cols:
-                cols = cols + ["area_ha"]
-        if tol:
-            g["geometry"] = g.geometry.simplify(tol)
-        g = g[[c for c in cols if c in g.columns] + ["geometry"]]
-        for c in g.columns:
-            if c != "geometry" and g[c].dtype.kind == "f":
-                g[c] = g[c].round(4)
-        g.to_crs(4326).to_file(datos / f"cv_{capa}.geojson", driver="GeoJSON", COORDINATE_PRECISION=6)
-        print(f"  corredores de vida, {capa}: {len(g)} elementos")
+    g = gpd.read_file(gpkg, layer="corredores")
+    g["geometry"] = g.geometry.make_valid().simplify(2)
+    g["area_ha"] = g.geometry.area / 1e4
+    g = g[[c for c in COLS_CORREDORES if c in g.columns] + ["area_ha", "geometry"]]
+    for c in g.columns:
+        if c != "geometry" and g[c].dtype.kind == "f":
+            g[c] = g[c].round(4)
+    g.to_crs(4326).to_file(datos / "corredores.geojson", driver="GeoJSON", COORDINATE_PRECISION=6)
+    print(f"  corredores de vida: {len(g)} corredores")
+
+COLS_COB_CORREDORES = ["fid", "cobertura_", "cob_agrup_", "Cob_restau", "condicion_"]
+
+
+def aligerar_coberturas_corredores(origen, datos):
+    """Versión ligera de las coberturas de los corredores: simplifica 1 m (muy por debajo del
+    píxel de 30 m), deja solo las columnas útiles, calcula area_ha y escribe en EPSG:4326."""
+    if not Path(origen).exists():
+        print(f"  (sin {Path(origen).name}: se omite la pestaña Corredores)")
+        return
+    g = gpd.read_file(origen)
+    if g.crs is None:
+        raise ValueError(f"{origen} no tiene CRS")
+    g = g.to_crs(9377)
+    g["geometry"] = g.geometry.make_valid()
+    g["area_ha"] = (g.geometry.area / 1e4).round(4)
+    g["geometry"] = g.geometry.simplify(1)
+    g = g[~g.geometry.is_empty & g.geometry.notna()]
+    g = g[[c for c in COLS_COB_CORREDORES if c in g.columns] + ["area_ha", "geometry"]]
+    g.to_crs(4326).to_file(datos / "coberturas_corredores.geojson", driver="GeoJSON", COORDINATE_PRECISION=6)
+    tam = (datos / "coberturas_corredores.geojson").stat().st_size / 1e6
+    print(f"  coberturas en corredores: {len(g)} polígonos, {tam:.1f} MB")
 
 
 def guardar_gz(ruta, arr):
@@ -110,7 +115,7 @@ def guardar_gz(ruta, arr):
     return ruta.stat().st_size
 
 
-def main(entrada, veredas_path, salida, cv_path=None):
+def main(entrada, veredas_path, salida, cv_path=None, cc_path=None):
     datos = salida / "data"
     datos.mkdir(parents=True, exist_ok=True)
 
@@ -198,6 +203,7 @@ def main(entrada, veredas_path, salida, cv_path=None):
 
     # --- Corredores de vida -------------------------------------------------
     exportar_corredores_vida(cv_path or CORREDORES_VIDA, datos)
+    aligerar_coberturas_corredores(cc_path or COB_CORREDORES, datos)
 
     # --- Metadatos de la malla -----------------------------------------------
     x0, y0 = dst_tf.c, dst_tf.f
@@ -220,5 +226,6 @@ if __name__ == "__main__":
     ap.add_argument("--veredas", type=Path, default=VEREDAS)
     ap.add_argument("--salida", type=Path, default=SALIDA)
     ap.add_argument("--corredores", type=Path, default=CORREDORES_VIDA)
+    ap.add_argument("--cob-corredores", type=Path, default=COB_CORREDORES)
     a = ap.parse_args()
-    main(a.entrada, a.veredas, a.salida, a.corredores)
+    main(a.entrada, a.veredas, a.salida, a.corredores, a.cob_corredores)
