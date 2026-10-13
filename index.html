@@ -6,7 +6,7 @@
 <title>Focalización Cachicamo: prioridades de conservación</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
 <link rel="stylesheet" href="lib/leaflet.css">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2026-10-13c">
 <style>
 /* ---------- Botón "Otros" y ventana de escenarios ---------- */
 .topbar { justify-content: space-between; }
@@ -41,6 +41,29 @@
 /* ---------- Corredores de vida ---------- */
 .sw--cv { border-width: 2px; border-style: solid; }
 .pop h5 { margin: 10px 0 4px; font-size: 12.5px; color: #0d5c6b; }
+/* ---------- Corredores: coberturas en corredores ---------- */
+.sw--ramp, .cc-ramp { background: linear-gradient(90deg, #fff3b0, #fecc5c, #fd8d3c, #e31a1c, #9e0016); }
+.cc-ramp { height: 10px; border-radius: 2px; margin-top: 8px; }
+.cc-legend { margin-top: 4px; }
+.seg button small { font-weight: 400; opacity: .8; font-size: 11px; }
+.cc-actions { margin-left: 0; margin-top: 12px; }
+.cc-list { margin-left: 0; }
+.cc-list li { break-inside: avoid; }
+.cc-list .n { color: var(--muted); font-size: 12px; margin-left: auto; padding-left: 6px; }
+.cc-list li label { width: 100%; }
+.cc-top { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.cc-top input { grid-column: 1 / -1; grid-row: 2; accent-color: #e31a1c; width: 100%; }
+.cc-top strong { color: var(--ink); }
+.kpi--red { background: #fde7e4; }
+.kpi--red span { color: #b3121b; }
+:root[data-theme="dark"] .kpi--red { background: #3a1d1d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .kpi--red { background: #3a1d1d; } }
+.cc-rank tbody tr { cursor: pointer; }
+.cc-rank tbody tr:hover td { background: var(--accent-soft); }
+.cc-rank .sq { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.cc-hint { margin: -4px 0 6px; }
+.cc-minarea { margin-top: 12px; }
+.cc-rank td:nth-child(2), .cc-rank td:nth-child(3), .cc-rank th:nth-child(2), .cc-rank th:nth-child(3) { text-align: left; }
 .lightbox { border: 0; padding: 0; max-width: 96vw; max-height: 94vh; background: transparent; }
 .lightbox::backdrop { background: rgba(10, 20, 16, .85); }
 .lightbox img { display: block; max-width: 96vw; max-height: 94vh; width: auto; height: auto; cursor: zoom-out; border-radius: 4px; }
@@ -66,6 +89,7 @@
       <button role="tab" class="tab is-active" data-tab="capas" aria-selected="true">Capas</button>
       <button role="tab" class="tab" data-tab="veredas" aria-selected="false">Veredas</button>
       <button role="tab" class="tab" data-tab="coberturas" aria-selected="false">Coberturas</button>
+      <button role="tab" class="tab" data-tab="corredores" aria-selected="false">Corredores</button>
     </nav>
 
     <!-- ===================== CAPAS ===================== -->
@@ -194,6 +218,64 @@
         <div class="chart-box" id="box-cobglob"><canvas id="ch-cobglob"></canvas></div>
       </div>
     </section>
+    <!-- ===================== CORREDORES: coberturas dentro de los corredores ===================== -->
+    <section class="tabpane" id="tab-corredores" role="tabpanel">
+      <div id="cc-loading" class="empty"><p>Cargando las coberturas de los corredores…</p></div>
+      <div id="cc-ui" hidden>
+        <div class="group">
+          <label class="layer-head"><input type="checkbox" id="cc-on" checked>
+            <span class="sw sw--ramp" aria-hidden="true"></span><span class="layer-name">Mostrar polígonos en el mapa</span></label>
+          <div class="opacity"><label>Opacidad <input type="range" id="cc-op" min="0" max="1" step="0.05" value="0.85"></label></div>
+
+          <h3>Modelo</h3>
+          <div class="seg" id="cc-model" role="radiogroup" aria-label="Modelo"></div>
+
+          <h3>Tipo de cobertura según</h3>
+          <div class="seg" id="cc-col" role="radiogroup" aria-label="Columna">
+            <button type="button" role="radio" aria-checked="true" data-col="cob_agrup_">Cobertura agrupada<br><small>cob_agrup_</small></button>
+            <button type="button" role="radio" aria-checked="false" data-col="Cob_restau">Restauración<br><small>Cob_restau</small></button>
+          </div>
+
+          <div class="cob-actions cc-actions">
+            <button type="button" class="link" id="cc-all">Todos</button>
+            <button type="button" class="link" id="cc-none">Ninguno</button>
+          </div>
+          <ul class="cob-list cc-list" id="cc-classes"></ul>
+
+          <label class="field cc-minarea">Área mínima del polígono
+            <select id="cc-minarea">
+              <option value="0">Todos los polígonos</option>
+              <option value="0.09">≥ 0,09 ha (1 píxel)</option>
+              <option value="0.5">≥ 0,5 ha</option>
+              <option value="1" selected>≥ 1 ha</option>
+              <option value="5">≥ 5 ha</option>
+              <option value="10">≥ 10 ha</option>
+            </select>
+          </label>
+
+          <h3>Resaltar en rojo</h3>
+          <label class="cc-top"><span>Polígonos con mayor mediana</span>
+            <input type="range" id="cc-top" min="1" max="1" step="1" value="1">
+            <strong id="cc-top-lbl"></strong></label>
+          <div class="cc-legend"><div class="cc-ramp"></div>
+            <div class="turbo-labels"><span id="cc-leg-min">menor mediana</span><span id="cc-leg-max">mayor mediana</span></div></div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><span id="cc-kpi-n"></span><small id="cc-kpi-n-lbl"></small></div>
+          <div class="kpi kpi--red"><span id="cc-kpi-top"></span><small id="cc-kpi-top-lbl"></small></div>
+        </div>
+
+        <h3>Resumen por tipo</h3>
+        <div class="table-wrap"><table class="stats" id="cc-sum"></table></div>
+
+        <h3>Polígonos con mayor mediana</h3>
+        <p class="hint cc-hint">Haz clic en una fila para ir al polígono.</p>
+        <div class="table-wrap"><table class="stats cc-rank" id="cc-rank"></table></div>
+        <p class="hint" id="cc-note"></p>
+        <button type="button" class="btn" id="cc-csv">Descargar polígonos filtrados (CSV)</button>
+      </div>
+    </section>
   </aside>
 
   <div class="mapwrap">
@@ -258,6 +340,6 @@
 <script src="lib/leaflet.js"></script>
 <script src="lib/chart.umd.js"></script>
 <script src="lib/fflate.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=2026-10-13c"></script>
 </body>
 </html>
