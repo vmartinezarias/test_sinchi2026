@@ -1,345 +1,47 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Focalización Cachicamo: prioridades de conservación</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
-<link rel="stylesheet" href="lib/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=2026-10-13d">
-<style>
-/* ---------- Botón "Otros" y ventana de escenarios ---------- */
-.topbar { justify-content: space-between; }
-.btn-otros {
-  padding: 7px 14px; border: 1px solid var(--accent); border-radius: var(--radius-s);
-  background: var(--panel); color: var(--accent); font-weight: 600; cursor: pointer; white-space: nowrap;
-}
-.btn-otros:hover { background: var(--accent-soft); }
-.otros {
-  width: min(1180px, 96vw); max-height: 92vh; padding: 0; border: 0; border-radius: var(--radius-m);
-  background: var(--panel); color: var(--ink);
-}
-.otros::backdrop { background: rgba(10, 20, 16, .6); }
-.otros-head {
-  position: sticky; top: 0; z-index: 2; background: var(--panel);
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
-  padding: 14px 20px; border-bottom: 1px solid var(--line);
-}
-.otros-head h2 { font-size: 19px; font-weight: 700; margin-right: auto; }
-.otros-head .seg { margin: 0; }
-.otros-close { background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); padding: 0 4px; }
-.otros-close:hover { color: var(--ink); }
-.otros-body { padding: 16px 20px 24px; }
-.esc[hidden] { display: none; }
-.esc-sub { margin: 0 0 14px; font-size: 14px; color: var(--muted); }
-.esc-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
-.esc-figs { display: grid; gap: 16px; }
-.zoom { display: block; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; background: #fff; cursor: zoom-in; }
-.zoom:hover { border-color: var(--accent); }
-.zoom img { display: block; width: 100%; height: auto; }
-.esc-pdf { display: inline-block; font-size: 13px; font-weight: 600; color: var(--accent); }
-/* ---------- Corredores de vida ---------- */
-.sw--cv { border-width: 2px; border-style: solid; }
-.pop h5 { margin: 10px 0 4px; font-size: 12.5px; color: #0d5c6b; }
-/* ---------- Corredores: coberturas en corredores ---------- */
-.sw--ramp, .cc-ramp { background: linear-gradient(90deg, #fff3b0, #fecc5c, #fd8d3c, #e31a1c, #9e0016); }
-.cc-ramp { height: 10px; border-radius: 2px; margin-top: 8px; }
-.cc-legend { margin-top: 4px; }
-.seg button small { font-weight: 400; opacity: .8; font-size: 11px; }
-.cc-actions { margin-left: 0; margin-top: 12px; }
-.cc-list { margin-left: 0; }
-.cc-list li { break-inside: avoid; }
-.cc-list .n { color: var(--muted); font-size: 12px; margin-left: auto; padding-left: 6px; }
-.cc-list li label { width: 100%; }
-.cc-top { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--muted); }
-.cc-top input { grid-column: 1 / -1; grid-row: 2; accent-color: #e31a1c; width: 100%; }
-.cc-top strong { color: var(--ink); }
-.kpi--red { background: #fde7e4; }
-.kpi--red span { color: #b3121b; }
-:root[data-theme="dark"] .kpi--red { background: #3a1d1d; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .kpi--red { background: #3a1d1d; } }
-.cc-rank tbody tr { cursor: pointer; }
-.cc-rank tbody tr:hover td { background: var(--accent-soft); }
-.cc-rank .sq { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-.cc-hint { margin: -4px 0 6px; }
-.cc-minarea { margin-top: 12px; }
-.cc-rank td:nth-child(2), .cc-rank td:nth-child(3), .cc-rank th:nth-child(2), .cc-rank th:nth-child(3) { text-align: left; }
-.lightbox { border: 0; padding: 0; max-width: 96vw; max-height: 94vh; background: transparent; }
-.lightbox::backdrop { background: rgba(10, 20, 16, .85); }
-.lightbox img { display: block; max-width: 96vw; max-height: 94vh; width: auto; height: auto; cursor: zoom-out; border-radius: 4px; }
-@media (max-width: 820px) {
-  .esc-grid { grid-template-columns: minmax(0, 1fr); }
-  .otros-head h2 { width: 100%; }
-  .otros-head .seg { flex: 1; }
-}
-</style>
-</head>
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Escenarios MSPA y selección interactiva de prioridades y núcleos de restauración en Cachicamo y Mesetas."><title>Focalización · Cachicamo y Mesetas</title><link rel="stylesheet" href="lib/leaflet.css"><link rel="stylesheet" href="styles.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>"></head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <h1>Focalización Cachicamo</h1>
-    <p>Prioridades de conservación con Zonation, SINCHI 2026</p>
-  </div>
-  <button type="button" class="btn-otros" id="btn-otros">Otros</button>
-</header>
-
-<main class="layout">
-  <aside class="panel" aria-label="Panel de control">
-    <nav class="tabs" role="tablist">
-      <button role="tab" class="tab is-active" data-tab="capas" aria-selected="true">Capas</button>
-      <button role="tab" class="tab" data-tab="veredas" aria-selected="false">Veredas</button>
-      <button role="tab" class="tab" data-tab="coberturas" aria-selected="false">Coberturas</button>
-      <button role="tab" class="tab" data-tab="corredores" aria-selected="false">Corredores</button>
-    </nav>
-
-    <!-- ===================== CAPAS ===================== -->
-    <section class="tabpane is-active" id="tab-capas" role="tabpanel">
-      <div class="group">
-        <h2>Corredor</h2>
-        <div class="layer layer--corridor" id="corridor-card">
-          <label class="layer-head">
-            <input type="checkbox" id="corr-on" checked>
-            <span class="sw sw--corridor" aria-hidden="true"></span>
-            <span class="layer-name">Consolidación CAZ2 ≥ umbral</span>
-          </label>
-          <div class="threshold">
-            <label for="corr-thr">Umbral de corte</label>
-            <div class="thr-row">
-              <input type="range" id="corr-thr" min="0" max="1" step="0.01" value="0.75">
-              <input type="number" id="corr-thr-num" min="0" max="1" step="0.01" value="0.75" aria-label="Umbral numérico">
-            </div>
-            <p class="corr-area"><strong id="corr-ha">—</strong> <span id="corr-pct"></span></p>
-          </div>
-          <div class="opacity"><label>Opacidad <input type="range" class="op" data-layer="corridor" min="0" max="1" step="0.05" value="0.85"></label></div>
-        </div>
-      </div>
-
-      <div class="group" id="cv-group">
-        <h2>Corredores de vida</h2>
-        <div id="cv-list"></div>
-      </div>
-
-      <div class="group">
-        <h2>Prioridad Zonation</h2>
-        <div id="raster-list"></div>
-        <div class="legend-turbo">
-          <div class="turbo-bar" id="turbo-bar"></div>
-          <div class="turbo-labels"><span>0 baja</span><span>0,5</span><span>1 alta</span></div>
-        </div>
-      </div>
-
-      <div class="group">
-        <h2>Coberturas</h2>
-        <div class="layer">
-          <label class="layer-head">
-            <input type="checkbox" id="cob-on">
-            <span class="sw sw--multi" aria-hidden="true"></span>
-            <span class="layer-name">Coberturas agrupadas</span>
-          </label>
-          <div class="opacity"><label>Opacidad <input type="range" class="op" data-layer="cob" min="0" max="1" step="0.05" value="0.75"></label></div>
-          <div class="cob-actions">
-            <button type="button" class="link" id="cob-all">Todas</button>
-            <button type="button" class="link" id="cob-none">Ninguna</button>
-          </div>
-          <ul class="cob-list" id="cob-list"></ul>
-        </div>
-      </div>
-
-      <div class="group">
-        <h2>Referencia</h2>
-        <div class="layer">
-          <label class="layer-head">
-            <input type="checkbox" id="ver-on" checked>
-            <span class="sw sw--line" aria-hidden="true"></span>
-            <span class="layer-name">Límites de veredas</span>
-          </label>
-        </div>
-        <fieldset class="basemaps">
-          <legend>Mapa base</legend>
-          <label><input type="radio" name="base" value="sat" checked> Satélite</label>
-          <label><input type="radio" name="base" value="light"> Claro</label>
-          <label><input type="radio" name="base" value="osm"> Calles</label>
-          <label><input type="radio" name="base" value="none"> Ninguno</label>
-        </fieldset>
-      </div>
-      <p class="hint">Haz clic en el mapa para ver los valores de cada capa en ese punto.</p>
-    </section>
-
-    <!-- ===================== VEREDAS ===================== -->
-    <section class="tabpane" id="tab-veredas" role="tabpanel">
-      <div class="group">
-        <label class="field">Vereda
-          <select id="ver-select"><option value="">Elige una vereda o haz clic en el mapa</option></select>
-        </label>
-        <div class="seg" id="raster-seg" role="radiogroup" aria-label="Ráster a analizar"></div>
-        <label class="check"><input type="checkbox" id="filter-cob"> Calcular solo dentro de las coberturas activas</label>
-      </div>
-
-      <div id="ver-empty" class="empty">
-        <p>Elige una vereda para calcular sus estadísticas. Todo se calcula aquí mismo, en tu navegador, con los píxeles de 30 m.</p>
-      </div>
-
-      <div id="ver-detail" hidden>
-        <div class="ver-title">
-          <h2 id="ver-name"></h2>
-          <p id="ver-sub"></p>
-        </div>
-        <div class="kpis">
-          <div class="kpi"><span id="kpi-area"></span><small id="kpi-area-lbl"></small></div>
-          <div class="kpi kpi--corr"><span id="kpi-corr"></span><small id="kpi-corr-lbl">en corredor</small></div>
-        </div>
-        <h3>Estadísticos por ráster</h3>
-        <div class="table-wrap"><table class="stats" id="ver-table"></table></div>
-        <h3>Distribución de valores</h3>
-        <div class="chart-box"><canvas id="ch-hist"></canvas></div>
-        <h3>Área por cobertura</h3>
-        <div class="chart-box" id="box-cobarea"><canvas id="ch-cobarea"></canvas></div>
-        <h3>Mediana por cobertura</h3>
-        <div class="chart-box" id="box-cobmed"><canvas id="ch-cobmed"></canvas></div>
-      </div>
-
-      <div class="group group--compare">
-        <h2>Comparar veredas</h2>
-        <label class="field">Indicador
-          <select id="cmp-metric"></select>
-        </label>
-        <div class="chart-box" id="box-cmp"><canvas id="ch-cmp"></canvas></div>
-        <button type="button" class="btn" id="csv-btn">Descargar tabla de veredas (CSV)</button>
-      </div>
-    </section>
-
-    <!-- ===================== COBERTURAS ===================== -->
-    <section class="tabpane" id="tab-coberturas" role="tabpanel">
-      <div class="group">
-        <p class="hint">Estadísticos calculados en la malla nativa (EPSG:9377) con el script de Python, por cobertura agrupada.</p>
-        <div class="seg" id="cob-seg" role="radiogroup" aria-label="Ráster"></div>
-        <div class="table-wrap"><table class="stats" id="cob-table"></table></div>
-        <h3>Mediana por cobertura y ráster</h3>
-        <div class="chart-box" id="box-cobglob"><canvas id="ch-cobglob"></canvas></div>
-      </div>
-    </section>
-    <!-- ===================== CORREDORES: coberturas dentro de los corredores ===================== -->
-    <section class="tabpane" id="tab-corredores" role="tabpanel">
-      <div id="cc-loading" class="empty"><p>Cargando las coberturas de los corredores…</p></div>
-      <div id="cc-ui" hidden>
-        <div class="group">
-          <label class="layer-head"><input type="checkbox" id="cc-on" checked>
-            <span class="sw sw--ramp" aria-hidden="true"></span><span class="layer-name">Mostrar polígonos en el mapa</span></label>
-          <div class="opacity"><label>Opacidad <input type="range" id="cc-op" min="0" max="1" step="0.05" value="0.85"></label></div>
-
-          <h3>Modelo</h3>
-          <div class="seg" id="cc-model" role="radiogroup" aria-label="Modelo"></div>
-
-          <h3>Tipo de cobertura según</h3>
-          <div class="seg" id="cc-col" role="radiogroup" aria-label="Columna">
-            <button type="button" role="radio" aria-checked="true" data-col="cob_agrup_">Cobertura agrupada<br><small>cob_agrup_</small></button>
-            <button type="button" role="radio" aria-checked="false" data-col="Cob_restau">Restauración<br><small>Cob_restau</small></button>
-          </div>
-
-          <div class="cob-actions cc-actions">
-            <button type="button" class="link" id="cc-all">Todos</button>
-            <button type="button" class="link" id="cc-none">Ninguno</button>
-          </div>
-          <ul class="cob-list cc-list" id="cc-classes"></ul>
-
-          <label class="field cc-minarea">Área mínima del polígono
-            <select id="cc-minarea">
-              <option value="0">Todos los polígonos</option>
-              <option value="0.09">≥ 0,09 ha (1 píxel)</option>
-              <option value="0.5">≥ 0,5 ha</option>
-              <option value="1" selected>≥ 1 ha</option>
-              <option value="5">≥ 5 ha</option>
-              <option value="10">≥ 10 ha</option>
-            </select>
-          </label>
-
-          <h3>Resaltar en rojo</h3>
-          <label class="cc-top"><span>Polígonos con mayor mediana</span>
-            <input type="range" id="cc-top" min="1" max="1" step="1" value="1">
-            <strong id="cc-top-lbl"></strong></label>
-          <div class="cc-legend"><div class="cc-ramp"></div>
-            <div class="turbo-labels"><span id="cc-leg-min">menor mediana</span><span id="cc-leg-max">mayor mediana</span></div></div>
-        </div>
-
-        <div class="kpis">
-          <div class="kpi"><span id="cc-kpi-n"></span><small id="cc-kpi-n-lbl"></small></div>
-          <div class="kpi kpi--red"><span id="cc-kpi-top"></span><small id="cc-kpi-top-lbl"></small></div>
-        </div>
-
-        <h3>Resumen por tipo</h3>
-        <div class="table-wrap"><table class="stats" id="cc-sum"></table></div>
-
-        <h3>Polígonos con mayor mediana</h3>
-        <p class="hint cc-hint">Haz clic en una fila para ir al polígono.</p>
-        <div class="table-wrap"><table class="stats cc-rank" id="cc-rank"></table></div>
-        <p class="hint" id="cc-note"></p>
-        <button type="button" class="btn" id="cc-csv">Descargar polígonos filtrados (CSV)</button>
-      </div>
-    </section>
-  </aside>
-
-  <div class="mapwrap">
-    <div id="map" aria-label="Mapa"></div>
-    <div class="loader" id="loader">
-      <div class="loader-card">
-        <p id="loader-msg">Cargando capas…</p>
-        <div class="bar"><div id="loader-bar"></div></div>
-      </div>
-    </div>
-  </div>
+<header><div class="brand"><span class="brandmark" aria-hidden="true">◈</span><div><h1>Focalización del paisaje</h1><p>Cachicamo y Mesetas <span> / </span> SINCHI · 2026</p></div></div><div class="header-right"><span class="tag">MSPA × Zonation</span><button id="help-open" class="quiet">Cómo usar el visor</button></div></header>
+<main><aside>
+<div class="locality"><label for="locality">ÁREA DE TRABAJO</label><select id="locality"><option>Cachicamo</option><option>Mesetas</option></select><span class="micro">Malla original · 30 m · EPSG:9377</span></div>
+<nav aria-label="Herramientas"><button class="tab active" data-tab="explore">Explorar</button><button class="tab" data-tab="core">Crear núcleos</button><button class="tab" data-tab="results">Resultados <span id="result-dot"></span></button></nav>
+<div class="scroll">
+<section id="pane-explore" class="pane active">
+<div class="sectionhead"><span class="eyebrow">01 / ESCENARIOS</span><h2>Prioridades en el paisaje</h2><p>Consulta cada escenario y selecciona un intervalo del rank.</p></div>
+<label class="label" for="scenario">Escenario morfológico</label><div id="scenario-buttons" class="segmented"><button data-scenario="S1_BASE" class="active">S1 · BASE</button><button data-scenario="S2_BASE">S2 · BASE</button><button data-scenario="S1_RH30">S1 · RH30</button><button data-scenario="S2_RH30">S2 · RH30</button></div><select id="scenario" hidden><option>S1_BASE</option><option>S2_BASE</option><option>S1_RH30</option><option>S2_RH30</option></select>
+<label class="label" for="model">Modelo de priorización</label><select id="model"><option value="A1">A1 · Consolidación</option><option value="B">B · Expansión de núcleos</option><option value="C">C · Stepping stones</option></select><p class="micro" id="model-hint">Consolidación jerárquica de la estructura del paisaje.</p>
+<div class="range-card"><div class="row"><label class="label" for="lo">Intervalo de rank</label><span class="tag soft">Límites inclusivos</span></div><div class="range-inputs"><label>Desde <input type="number" id="lo" min="0" max="1" step="0.01" value="0.75"></label><span>→</span><label>Hasta <input type="number" id="hi" min="0" max="1" step="0.01" value="1"></label></div><input aria-label="Umbral inferior" type="range" id="lo-slider" min="0" max="1" step="0.01" value="0.75"><p class="micro">Por ejemplo, 0,50–0,85 selecciona ese intervalo del rank. No equivale al porcentaje del área.</p></div>
+<label class="label" for="paint">Representación del mapa</label><select id="paint"><option value="rank">Rank continuo + selección destacada</option><option value="selected">Solo celdas seleccionadas</option><option value="coverage">Coberturas + selección destacada</option></select>
+<button id="explore-apply" class="primary full">Actualizar selección</button><button id="compare" class="secondary full">Comparar los cuatro MSPA</button>
+</section>
+<section id="pane-core" class="pane">
+<div class="sectionhead"><span class="eyebrow">02 / RESTAURACIÓN</span><h2>Construir núcleos candidatos</h2><p>Selecciona celdas por modelo, exige acuerdo entre MSPA y descarta parches pequeños.</p></div>
+<div class="note">En cada MSPA basta que <strong>uno de los modelos activos</strong> cumpla su intervalo. Después se cuenta el acuerdo entre MSPA.</div>
+<label class="label">Modelos e intervalos de rank</label><div id="core-models">
+<div class="modelrow"><label><input type="checkbox" data-core-model="A1"> <b>A1</b> Consolidación</label><input aria-label="A1 rank mínimo" data-min="A1" type="number" min="0" max="1" step="0.01" value="0.75"><span>–</span><input aria-label="A1 rank máximo" data-max="A1" type="number" min="0" max="1" step="0.01" value="1"></div>
+<div class="modelrow"><label><input type="checkbox" data-core-model="B" checked> <b>B</b> Expansión</label><input aria-label="B rank mínimo" data-min="B" type="number" min="0" max="1" step="0.01" value="0.75"><span>–</span><input aria-label="B rank máximo" data-max="B" type="number" min="0" max="1" step="0.01" value="1"></div>
+<div class="modelrow"><label><input type="checkbox" data-core-model="C" checked> <b>C</b> Stepping stones</label><input aria-label="C rank mínimo" data-min="C" type="number" min="0" max="1" step="0.01" value="0.75"><span>–</span><input aria-label="C rank máximo" data-max="C" type="number" min="0" max="1" step="0.01" value="1"></div></div>
+<label class="label">MSPA que participan</label><div class="checks-grid" id="core-scenarios"><label><input type="checkbox" value="S1_BASE" checked> S1 · BASE</label><label><input type="checkbox" value="S2_BASE" checked> S2 · BASE</label><label><input type="checkbox" value="S1_RH30" checked> S1 · RH30</label><label><input type="checkbox" value="S2_RH30" checked> S2 · RH30</label></div>
+<div class="two"><label class="label">Acuerdo mínimo<select id="agreement"><option value="1">1 de 4 MSPA</option><option value="2">2 de 4 MSPA</option><option value="3" selected>3 de 4 MSPA</option><option value="4">4 de 4 MSPA</option></select></label><label class="label">Área mínima (ha)<input type="number" id="min-ha" min="0" step="0.1" value="1"></label></div><p class="micro">Parches conectados por ocho vecinos. El filtro de área se aplica después de coberturas y ámbito.</p>
+<button id="generate" class="primary full">Calcular núcleos candidatos</button><button id="reset" class="secondary full">Restaurar criterios del script R</button>
+</section>
+<section id="pane-results" class="pane">
+<div class="sectionhead"><span class="eyebrow">03 / SELECCIÓN</span><h2>Resultados y descarga</h2><p id="result-description">Actualiza una selección o calcula núcleos para revisar el resultado.</p></div>
+<div id="stale" class="warning" hidden>Los criterios cambiaron. Recalcula para habilitar la descarga.</div>
+<button id="recalculate" class="primary full" hidden>Recalcular con los nuevos criterios</button>
+<div id="metrics" class="metrics"><div><span>ÁREA SELECCIONADA</span><strong id="area">—</strong></div><div><span>PARCHES</span><strong id="patches">—</strong></div><div><span>ÁREA VÁLIDA DEL ÁMBITO</span><strong id="eligible">—</strong></div><div><span>FRACCIÓN SELECCIONADA</span><strong id="percent">—</strong></div></div>
+<div class="download-card"><h3>Descargar selección</h3><p class="micro">El paquete incluye SHP y GeoTIFF en EPSG:9377, GeoJSON en WGS84, tablas y parámetros.</p><button data-export="zip" class="primary full" disabled>Descargar paquete SIG (.zip)</button><div class="export-grid"><button data-export="geojson" disabled>GeoJSON</button><button data-export="tif" disabled>GeoTIFF</button><button data-export="csv" disabled>Tabla CSV</button><button data-export="params" disabled>Parámetros</button></div></div>
+<h3 class="table-title">Composición de la selección</h3><div id="coverage-stats" class="tablebox"><p class="micro">Aún no hay resultados.</p></div>
+<h3 class="table-title">Parches por área</h3><input id="patch-search" type="search" placeholder="Buscar ID, cobertura o corredor" aria-label="Buscar parches"><div id="patch-table" class="tablebox"></div><p class="micro" id="table-note"></p>
+<div id="comparison-wrap" hidden><h3 class="table-title">Comparación entre escenarios</h3><p class="micro" id="comparison-caption"></p><div id="comparison" class="tablebox"></div><button id="compare-csv" class="secondary full">Descargar comparación CSV</button></div>
+</section>
+<details class="filters" open><summary><span>Filtros espaciales y coberturas</span><span class="micro">Compartidos</span></summary><div class="filter-body"><label class="check"><input id="inside" type="checkbox" checked> Limitar a corredores consolidados</label><label class="label" for="corridor">Corredor</label><select id="corridor"><option value="0">Todos los corredores</option></select><label class="label" for="vereda">Vereda</label><select id="vereda"><option value="0">Todas las veredas</option></select><p id="vereda-note" class="micro"></p><div class="row"><label class="label">Coberturas incluidas</label><span><button id="all-covers" class="textbutton">Todas</button> · <button id="no-covers" class="textbutton">Ninguna</button></span></div><div id="cover-list"></div><p class="micro">Se filtran celdas según la cobertura en su centro. Por defecto se excluyen agua y tierras degradadas, como en el script de núcleos.</p></div></details>
+<details class="layers" open><summary>Capas de referencia</summary><div class="filter-body"><label class="check"><input id="show-corridors" type="checkbox" checked><i class="swatch line"></i>Corredores consolidados</label><label class="check"><input id="show-proposal" type="checkbox"><i class="swatch proposal"></i>Propuesta original de núcleos</label><label class="check"><input id="show-veredas" type="checkbox"><i class="swatch vereda"></i>Veredas de Cachicamo</label><label class="label" for="opacity">Opacidad de la selección <output id="opacity-value">85 %</output></label><input id="opacity" type="range" min="0" max="1" step="0.05" value="0.85"><label class="label" for="basemap">Mapa base</label><select id="basemap"><option value="sat" selected>Imagen satelital</option><option value="osm">OpenStreetMap</option><option value="none">Sin mapa base</option></select></div></details>
+<footer><a href="version_anterior/index.html" target="_blank" rel="noopener">Abrir visor anterior de Cachicamo ↗</a><p>Escenarios precomputados de Zonation. Los controles cambian la selección, no ejecutan de nuevo MSPA ni Zonation.</p></footer>
+</div><div class="status" role="status" aria-live="polite"><span id="status-dot"></span><span id="status">Preparando visor…</span></div>
+</aside>
+<div class="map-wrap"><div id="map" aria-label="Mapa interactivo de prioridades"></div><div id="map-title" class="map-card"><span class="eyebrow" id="map-locality">CACHICAMO</span><strong id="map-layer">Consolidación · S1 BASE</strong><span id="map-criteria">Rank 0,75–1,00 · corredores consolidados</span></div><div id="map-tools"><button id="fit" title="Ajustar a la localidad" aria-label="Ajustar a la localidad">⌖</button></div><div class="legend map-card"><div class="row"><strong id="legend-title">Rank de prioridad</strong><span class="micro" id="legend-tag">A1</span></div><div class="gradient"></div><div class="row micro"><span id="legend-low">0 · menor</span><span id="legend-high">1 · mayor</span></div><p id="legend-note">Celdas fuera del intervalo atenuadas.</p></div><div id="map-result" class="map-card map-result"><span>SELECCIÓN ACTUAL</span><strong id="map-area">—</strong><span id="map-patches">Ajusta criterios para explorar</span></div><div id="map-busy" hidden><span class="spinner"></span><span id="busy-text">Cargando datos…</span></div></div>
 </main>
-
-<!-- ===================== OTROS: escenarios, gráficas e infografías ===================== -->
-<dialog class="otros" id="otros" aria-labelledby="otros-title">
-  <div class="otros-head">
-    <h2 id="otros-title">Escenarios de Zonation</h2>
-    <div class="seg" id="esc-seg" role="radiogroup" aria-label="Escenario">
-      <button type="button" role="radio" aria-checked="true" data-esc="caz2">Consolidación (CAZ2)</button>
-      <button type="button" role="radio" aria-checked="false" data-esc="abf_exp">Expansión de núcleos (ABF)</button>
-      <button type="button" role="radio" aria-checked="false" data-esc="abf_rec">Reconexión de matriz (ABF)</button>
-    </div>
-    <button type="button" class="otros-close" id="otros-close" aria-label="Cerrar">×</button>
-  </div>
-  <div class="otros-body">
-    <article class="esc" data-esc="caz2">
-      <p class="esc-sub">Escenario A1: consolidación de corredores. Haz clic en una figura para verla en grande.</p>
-      <div class="esc-grid">
-        <a class="zoom" href="infografia_caz2.png"><img src="infografia_caz2.png" alt="Infografía del escenario CAZ2" loading="lazy"></a>
-        <div class="esc-figs">
-          <a class="zoom" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.png"><img src="CAZ2_Consolidacion_Curvas_representacion_features_A1.png" alt="Curvas de representación de atributos, CAZ2" loading="lazy"></a>
-          <a class="zoom" href="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png"><img src="CAZ2_Consolidacion_Comparacion_Top_05_10_15_A1.png" alt="Representación en Top 5, 10 y 15 %, CAZ2" loading="lazy"></a>
-          <a class="esc-pdf" href="CAZ2_Consolidacion_Curvas_representacion_features_A1.pdf" target="_blank" rel="noopener">Descargar curvas en PDF</a>
-        </div>
-      </div>
-    </article>
-    <article class="esc" data-esc="abf_exp" hidden>
-      <p class="esc-sub">Escenario B1: expansión restaurativa de núcleos. Haz clic en una figura para verla en grande.</p>
-      <div class="esc-grid">
-        <a class="zoom" href="infografia_abf_expansion.png"><img src="infografia_abf_expansion.png" alt="Infografía del escenario ABF de expansión" loading="lazy"></a>
-        <div class="esc-figs">
-          <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF expansión" loading="lazy"></a>
-          <a class="zoom" href="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_exp_nucleos_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF expansión" loading="lazy"></a>
-          <a class="zoom" href="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png"><img src="ABF_exp_nucleos_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF expansión" loading="lazy"></a>
-        </div>
-      </div>
-    </article>
-    <article class="esc" data-esc="abf_rec" hidden>
-      <p class="esc-sub">Escenario B1: reconexión de la matriz con stepping stones. Haz clic en una figura para verla en grande.</p>
-      <div class="esc-grid">
-        <a class="zoom" href="infografia_abf_reconexion.png"><img src="infografia_abf_reconexion.png" alt="Infografía del escenario ABF de reconexión" loading="lazy"></a>
-        <div class="esc-figs">
-          <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1.png"><img src="ABF_reconec_Curvas_representacion_features_B1.png" alt="Curvas de representación de atributos, ABF reconexión" loading="lazy"></a>
-          <a class="zoom" href="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png"><img src="ABF_reconec_Curvas_representacion_features_B1_ZOOM_30.png" alt="Detalle 0 a 30 %, ABF reconexión" loading="lazy"></a>
-          <a class="zoom" href="ABF_reconec_Comparacion_Top_05_10_15_B1.png"><img src="ABF_reconec_Comparacion_Top_05_10_15_B1.png" alt="Representación en Top 5, 10 y 15 %, ABF reconexión" loading="lazy"></a>
-        </div>
-      </div>
-    </article>
-  </div>
-</dialog>
-
-<script src="lib/leaflet.js"></script>
-<script src="lib/chart.umd.js"></script>
-<script src="lib/fflate.js"></script>
-<script src="app.js?v=2026-10-13d"></script>
-</body>
-</html>
+<dialog id="help"><div class="dialoghead"><h2>Del escenario a la selección</h2><button id="help-close" aria-label="Cerrar ayuda">✕</button></div><ol><li><strong>Explorar:</strong> elige localidad, MSPA, modelo e intervalo de rank. Un rank mayor expresa prioridad relativa dentro de esa corrida; 0,75 no significa 75 % de superficie.</li><li><strong>Crear núcleos:</strong> para cada MSPA se aplica la unión de modelos activos (B o C por defecto). Se exige acuerdo en 3 de 4 MSPA y se conservan parches de al menos 1 ha. Puedes cambiar todos esos criterios.</li><li><strong>Filtrar:</strong> las coberturas, el corredor y la vereda delimitan las celdas elegibles antes de formar los parches.</li><li><strong>Resultados:</strong> descarga SHP, GeoTIFF, GeoJSON, tablas y parámetros. El cálculo conserva Float32 y la malla EPSG:9377 de 30 m; cada celda representa 0,09 ha de área plana.</li></ol><p>Los núcleos resultantes son candidatos de restauración para revisión. El modelo B propone expansión y C stepping stones; A1 puede incluirse si tu criterio lo requiere. No se reinterpretan como la clase «Core» de MSPA.</p><p>Las veredas provienen del visor anterior y solo están disponibles en Cachicamo. Los corredores y núcleos originales son capas de referencia fijas. Toca el mapa para consultar valores por celda o atributos de esas referencias.</p><p>El procesamiento ocurre en tu navegador. La primera carga de modelos puede tardar; se recomienda computador de escritorio. La cartografía base requiere conexión externa.</p><button id="help-done" class="primary full">Entendido</button></dialog>
+<script src="lib/leaflet.js"></script><script src="lib/fflate.js"></script><script src="lib/proj4.js"></script><script src="app.js"></script>
+</body></html>

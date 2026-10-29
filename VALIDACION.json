@@ -1,0 +1,47 @@
+{
+  "default_core_selection": [
+    {
+      "locality": "Cachicamo",
+      "patches": 496,
+      "cells": 39027,
+      "area_ha": 3512.43,
+      "all_shapes_valid": true,
+      "geotiff_crs": "EPSG:9377",
+      "geotiff_nodata": 0.0,
+      "shp_raster_roundtrip": true,
+      "geojson_raster_roundtrip": true,
+      "original_proposal_exact_cells": true
+    },
+    {
+      "locality": "Mesetas",
+      "patches": 343,
+      "cells": 70592,
+      "area_ha": 6353.28,
+      "all_shapes_valid": true,
+      "geotiff_crs": "EPSG:9377",
+      "geotiff_nodata": 0.0,
+      "shp_raster_roundtrip": true,
+      "geojson_raster_roundtrip": true,
+      "original_proposal_exact_cells": true
+    }
+  ],
+  "extra_checks": {
+    "all_512_3x3_topologies": true,
+    "filtered_rank_interval_independent_numpy": true,
+    "four_scenario_area_comparison_independent_numpy": true,
+    "empty_selection_exports": true,
+    "browser_cachicamo_3of4": {
+      "patches": 496,
+      "area_ha": 3512.43
+    },
+    "browser_mesetas_3of4": {
+      "patches": 343,
+      "area_ha": 6353.28
+    },
+    "browser_mesetas_4of4": {
+      "patches": 354,
+      "area_ha": 5643.18
+    }
+  },
+  "browser_export": "El navegador confirmó la generación del ZIP; la captura automática del evento de descarga agotó su tiempo. Los bytes exportados por el mismo motor fueron validados fuera del navegador."
+}

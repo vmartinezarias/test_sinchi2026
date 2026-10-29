@@ -1,0 +1,14 @@
+/* ESRI Polygon SHP/SHX + dBASE III. Native projected coordinates, UTF-8 CPG. */
+(function(root){'use strict';
+function shapeFiles(features,wkt){
+ const enc=new TextEncoder(),records=[],box=[Infinity,Infinity,-Infinity,-Infinity];
+ for(const f of features){const rings=f.geometry.coordinates.flat().map(r=>r.slice()),pts=rings.flat(),b=[Infinity,Infinity,-Infinity,-Infinity];for(const [x,y]of pts){b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],y);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],y);}box[0]=Math.min(box[0],b[0]);box[1]=Math.min(box[1],b[1]);box[2]=Math.max(box[2],b[2]);box[3]=Math.max(box[3],b[3]);const bytes=new Uint8Array(44+4*rings.length+16*pts.length),v=new DataView(bytes.buffer);v.setInt32(0,5,true);b.forEach((n,i)=>v.setFloat64(4+i*8,n,true));v.setInt32(36,rings.length,true);v.setInt32(40,pts.length,true);let n=0;rings.forEach((r,i)=>{v.setInt32(44+i*4,n,true);n+=r.length;});pts.forEach(([x,y],i)=>{v.setFloat64(44+rings.length*4+i*16,x,true);v.setFloat64(52+rings.length*4+i*16,y,true);});records.push(bytes);}
+ if(!features.length)box.fill(0);
+ function header(length){const a=new Uint8Array(length),v=new DataView(a.buffer);v.setInt32(0,9994);v.setInt32(24,length/2);v.setInt32(28,1000,true);v.setInt32(32,5,true);box.forEach((n,i)=>v.setFloat64(36+i*8,n,true));return a;}
+ const shp=header(100+records.reduce((n,b)=>n+8+b.length,0)),shx=header(100+records.length*8);let offset=100;
+ records.forEach((b,i)=>{const v=new DataView(shp.buffer),s=new DataView(shx.buffer);v.setInt32(offset,i+1);v.setInt32(offset+4,b.length/2);shp.set(b,offset+8);s.setInt32(100+i*8,offset/2);s.setInt32(104+i*8,b.length/2);offset+=8+b.length;});
+ const fields=[['id','C',16,0],['area_ha','N',20,4],['cells','N',14,0],['agreement','N',12,3],['cov_dom','C',100,0],['corr_dom','C',30,0]],rh=1+fields.reduce((s,f)=>s+f[2],0),hh=33+32*fields.length,dbf=new Uint8Array(hh+features.length*rh+1),d=new DataView(dbf.buffer),date=new Date();dbf[0]=3;dbf[1]=date.getFullYear()-1900;dbf[2]=date.getMonth()+1;dbf[3]=date.getDate();d.setUint32(4,features.length,true);d.setUint16(8,hh,true);d.setUint16(10,rh,true);
+ fields.forEach((f,i)=>{const p=32+i*32;dbf.set(enc.encode(f[0]),p);dbf[p+11]=f[1].charCodeAt(0);dbf[p+16]=f[2];dbf[p+17]=f[3];});dbf[hh-1]=13;
+ features.forEach((f,i)=>{let p=hh+i*rh;dbf[p++]=32;fields.forEach(([name,type,len,dec])=>{let val=f.properties[name]??'';let s=type==='N'?(val===''?'':Number(val).toFixed(dec)).padStart(len,' '):String(val);dbf.fill(32,p,p+len);let b=enc.encode(s);if(b.length>len){s=String(val);while(enc.encode(s).length>len)s=s.slice(0,-1);b=enc.encode(s);}dbf.set(b,p);p+=len;});});dbf[dbf.length-1]=26;
+ return {'seleccion.shp':shp,'seleccion.shx':shx,'seleccion.dbf':dbf,'seleccion.prj':enc.encode(wkt),'seleccion.cpg':enc.encode('UTF-8')};
+}root.shapeFiles=shapeFiles;})(typeof self!=='undefined'?self:globalThis);

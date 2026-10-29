@@ -1,0 +1,6 @@
+numpy
+rasterio
+pyproj
+shapely
+pyshp
+scipy
