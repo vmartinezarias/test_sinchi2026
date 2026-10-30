@@ -1,0 +1,28 @@
+{
+  "nuclei": 496,
+  "area_ha": 3512.43,
+  "corridors": 5,
+  "corridor_area_ha": 70844.6,
+  "criteria": {
+    "models": [
+      "B",
+      "C"
+    ],
+    "rank_min": 0.75,
+    "agreement": 3,
+    "mspa_total": 4,
+    "min_area_ha": 1,
+    "neighbors": 8,
+    "excluded_coverages": [
+      "Tierras degradadas",
+      "Superficies de agua"
+    ],
+    "inside_corridors": true
+  },
+  "origin": "Capas originales de SALIDAS_FINALES suministradas por el usuario; no recalculadas al abrir el visor.",
+  "crs": "EPSG:9377",
+  "nuclei_csv": "data/Cachicamo/original/nucleos.csv",
+  "nuclei_geojson": "data/Cachicamo/original/nucleos.geojson",
+  "corridors_geojson": "data/Cachicamo/original/corredores.geojson",
+  "zip": "data/Cachicamo/original/Cachicamo_resultado_final_original.zip"
+}

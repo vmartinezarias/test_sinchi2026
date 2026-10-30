@@ -1,0 +1,33 @@
+{
+  "original_downloads": [
+    {
+      "locality": "Cachicamo",
+      "nuclei": 496,
+      "area_ha": 3512.43,
+      "corridors": 5,
+      "source_shp_all_bytes_identical": true,
+      "tiff_grid_and_area_verified": true
+    },
+    {
+      "locality": "Mesetas",
+      "nuclei": 343,
+      "area_ha": 6353.28,
+      "corridors": 3,
+      "source_shp_all_bytes_identical": true,
+      "tiff_grid_and_area_verified": true
+    }
+  ],
+  "graphs": {
+    "count": 18,
+    "byte_identical_to_uploads": true,
+    "mspa_mapping": "not_specified_in_sources"
+  },
+  "analysis_engine": "Sin cambios en criterios numéricos; se añade reinicio del estado y carga diferida.",
+  "ui_checks": [
+    "Inicio con resultado final y capas originales activas",
+    "OpenStreetMap seleccionado por defecto",
+    "Método y gráficas accesibles",
+    "Cachicamo personalizado con criterios originales: 496 núcleos y 3512.43 ha",
+    "Regreso al original mantiene su descarga fija"
+  ]
+}

@@ -39,7 +39,8 @@ function features(){
 }
 function patchRows(){const p=result.p;return result.patches.map(({num,...r})=>({...r,locality:loc.id,mode:p.mode,scenarios:(p.scenarios||[p.scenario]).join('|'),models:(p.models||[p.model]).join('|'),rank_intervals:JSON.stringify(p.ranges||{[p.model]:p.range}),agreement_min:p.agreement??'',area_min_ha:p.minHa??0,inside_corridors:p.inside,corridor_filter:p.corridor,vereda_filter:p.vereda,coverages_included:p.coverages.map(id=>loc.coverages.find(c=>c.id===id)?.name).join('|')}));}
 async function handle(msg){const {id,type,payload}=msg;let out;
- if(type==='init'){
+ if(type==='reset'){catalog=null;loc=null;cover=null;corridor=null;vereda=null;lookup=null;cache={};result=null;out={ok:true};}
+ else if(type==='init'){
   catalog=payload.catalog;loc=catalog.localities.find(x=>x.id===payload.locality);if(!loc)throw Error('Localidad inválida');cache={};result=null;note('Cargando malla y coberturas…');
   [cover,corridor,lookup,vereda]=await Promise.all([bin(`data/${loc.id}/cover.u8.gz`,Uint8Array),bin(`data/${loc.id}/corridor.u8.gz`,Uint8Array),bin(`data/${loc.id}/lookup.u32.gz`,Uint32Array),loc.veredas.length?bin(`data/${loc.id}/vereda.u8.gz`,Uint8Array):null]);
   if(cover.length!==loc.grid.width*loc.grid.height||corridor.length!==cover.length)throw Error('Malla de datos incompatible');out={ok:true};

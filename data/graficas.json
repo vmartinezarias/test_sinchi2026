@@ -1,0 +1,111 @@
+{
+  "by_locality": {
+    "Cachicamo": {
+      "A1": {
+        "top": {
+          "file": "graficas/Cachicamo/A1_top.png",
+          "source_filename": "Cachicamo_Escenario_A_Consolidacion_Comparacion_Top_05_10_15_A1.png",
+          "mspa": null
+        },
+        "full": {
+          "file": "graficas/Cachicamo/A1_full.png",
+          "source_filename": "Cachicamo_Escenario_A_Consolidacion_Curvas_representacion_features_A1.png",
+          "mspa": null
+        },
+        "zoom": {
+          "file": "graficas/Cachicamo/A1_zoom.png",
+          "source_filename": "Cachicamo_Escenario_A_Consolidacion_Curvas_representacion_features_A1_ZOOM_30.png",
+          "mspa": null
+        }
+      },
+      "B": {
+        "top": {
+          "file": "graficas/Cachicamo/B_top.png",
+          "source_filename": "Cachicamo_Escenario_B_Expansion_Comparacion_Top_05_10_15_B.png",
+          "mspa": null
+        },
+        "full": {
+          "file": "graficas/Cachicamo/B_full.png",
+          "source_filename": "Cachicamo_Escenario_B_Expansion_Curvas_representacion_features_B.png",
+          "mspa": null
+        },
+        "zoom": {
+          "file": "graficas/Cachicamo/B_zoom.png",
+          "source_filename": "Cachicamo_Escenario_B_Expansion_Curvas_representacion_features_B_ZOOM_30.png",
+          "mspa": null
+        }
+      },
+      "C": {
+        "top": {
+          "file": "graficas/Cachicamo/C_top.png",
+          "source_filename": "Cachicamo_Escenario_C_reconexion_stepping_stones_Comparacion_Top_05_10_15_C.png",
+          "mspa": null
+        },
+        "full": {
+          "file": "graficas/Cachicamo/C_full.png",
+          "source_filename": "Cachicamo_Escenario_C_reconexion_stepping_stones_Curvas_representacion_features_C.png",
+          "mspa": null
+        },
+        "zoom": {
+          "file": "graficas/Cachicamo/C_zoom.png",
+          "source_filename": "Cachicamo_Escenario_C_reconexion_stepping_stones_Curvas_representacion_features_C_ZOOM_30.png",
+          "mspa": null
+        }
+      }
+    },
+    "Mesetas": {
+      "A1": {
+        "top": {
+          "file": "graficas/Mesetas/A1_top.png",
+          "source_filename": "Mesetas_Escenario_A_Consolidacion_Comparacion_Top_05_10_15_A1.png",
+          "mspa": null
+        },
+        "full": {
+          "file": "graficas/Mesetas/A1_full.png",
+          "source_filename": "Mesetas_Escenario_A_Consolidacion_Curvas_representacion_features_A1.png",
+          "mspa": null
+        },
+        "zoom": {
+          "file": "graficas/Mesetas/A1_zoom.png",
+          "source_filename": "Mesetas_Escenario_A_Consolidacion_Curvas_representacion_features_A1_ZOOM_30.png",
+          "mspa": null
+        }
+      },
+      "B": {
+        "top": {
+          "file": "graficas/Mesetas/B_top.png",
+          "source_filename": "Mesetas_Escenario_B_Expansion_Nucleos_Comparacion_Top_05_10_15_B.png",
+          "mspa": null
+        },
+        "full": {
+          "file": "graficas/Mesetas/B_full.png",
+          "source_filename": "Mesetas_Escenario_B_Expansion_Nucleos_Curvas_representacion_features_B.png",
+          "mspa": null
+        },
+        "zoom": {
+          "file": "graficas/Mesetas/B_zoom.png",
+          "source_filename": "Mesetas_Escenario_B_Expansion_Nucleos_Curvas_representacion_features_B_ZOOM_30.png",
+          "mspa": null
+        }
+      },
+      "C": {
+        "top": {
+          "file": "graficas/Mesetas/C_top.png",
+          "source_filename": "Mesetas_Escenario_C_reconexion_stepping_stones_Comparacion_Top_05_10_15_C.png",
+          "mspa": null
+        },
+        "full": {
+          "file": "graficas/Mesetas/C_full.png",
+          "source_filename": "Mesetas_Escenario_C_reconexion_stepping_stones_Curvas_representacion_features_C.png",
+          "mspa": null
+        },
+        "zoom": {
+          "file": "graficas/Mesetas/C_zoom.png",
+          "source_filename": "Mesetas_Escenario_C_reconexion_stepping_stones_Curvas_representacion_features_C_ZOOM_30.png",
+          "mspa": null
+        }
+      }
+    }
+  },
+  "scope": "Figuras aportadas por localidad y modelo A1/B/C. Los archivos no identifican el escenario MSPA específico; no se asignan a S1_BASE, S2_BASE, S1_RH30 o S2_RH30."
+}

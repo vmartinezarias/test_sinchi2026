@@ -1,6 +1,34 @@
-# Focalización del paisaje · Cachicamo y Mesetas
+# Focalización del paisaje · Resultado final, escenarios y propuestas personalizadas
 
 Visor estático listo para GitHub Pages, sin instalación ni servidor de análisis. El ZIP entregado contiene `index.html` directamente en su raíz.
+
+
+## Actualización: resultado final al inicio
+
+Al abrir se muestra **Resultado final del procesamiento**: propuesta original de núcleos en morado, corredores consolidados delineados en naranja y fondo OpenStreetMap. No se carga un rankmap ni se recalculan núcleos al entrar. La primera vista conserva exactamente los archivos originales suministrados.
+
+- **Descargar resultado final original (.zip)**: núcleos y corredores con sus SHP originales en EPSG:9377, sus atributos completos, GeoJSON WGS84, tablas y un GeoTIFF de IDs de núcleos en la malla de 30 m. Estos archivos son fijos e independientes de cualquier filtro personalizado.
+- **¿Cómo se llegó a esto?**: explica la secuencia MSPA → A1/B/C → corredores consolidados → propuesta original de núcleos. A1 participa en la evaluación de los corredores; la selección original de núcleos exige B o C ≥ 0,75 en al menos tres de cuatro MSPA, dentro de corredores, ocho vecinos y área ≥ 1 ha, excluyendo agua y tierras degradadas.
+- **Escenarios de priorización**: abre la exploración de los 24 rankmaps. Los filtros de cobertura se aplican a las selecciones exploratorias y personalizadas, nunca al archivo original.
+- **Crear propuesta personalizada de núcleos**: reemplaza el nombre «Crear núcleos». Conserva umbrales, intervalos, acuerdo, coberturas y área mínima editables. Sus resultados se identifican como personalizados y se descargan con sus parámetros.
+- **Gráficas**: incluye las 18 imágenes aportadas (dos localidades × tres modelos × tres tipos: curva completa, detalle 0–30 %, barras Top 5/10/15 %). Incluye explicación de ejes, atributos, denominador de paisaje o matriz restaurable y descarga de PNG.
+
+Las gráficas están identificadas por localidad y modelo; sus archivos no especifican S1_BASE/S2_BASE/S1_RH30/S2_RH30. El visor no les atribuye un MSPA ni las recalcula al cambiar filtros. Los porcentajes de paisaje/matriz retenidos en las curvas y los valores de rank del mapa se explican como cantidades distintas.
+
+La pestaña **Resultado final** permite volver a la propuesta original después de explorar o crear alternativas. Los controles de sus capas aparecen en la parte superior de esa vista. Las descargas originales siguen disponibles aunque se haya calculado una propuesta personalizada.
+
+### Regenerar las descargas originales y las figuras
+
+Después de preparar los rankmaps con `tools/preparar_datos.py`, ejecuta:
+
+```bash
+python tools/preparar_resultado_final.py /ruta/SALIDAS_FINALES \
+  --graficas-cachicamo /ruta/Cachicamo_Graficas.zip \
+  --graficas-mesetas /ruta/Mesetas_Graficas.zip \
+  --web .
+```
+
+Esto conserva los SHP fuente dentro de las descargas, genera GeoJSON/CSV/TIFF, copia las figuras sin alterarlas y actualiza sus catálogos y sumas SHA-256.
 
 ## Publicar en tu GitHub Pages actual
 
@@ -40,7 +68,7 @@ Los cambios actualizan la selección automáticamente. También puedes pulsar **
 
 El mapa permite consultar los ranks A1, B y C del MSPA elegido, coordenadas EPSG:9377, cobertura, corredor y pertenencia a un parche de la selección. Al activar referencias, puedes consultar sus atributos.
 
-### Crear núcleos
+### Crear propuesta personalizada de núcleos
 
 Por defecto reproduce la regla del script `5-Coberturas_corredores_nucleos.R`:
 
@@ -52,7 +80,7 @@ Por defecto reproduce la regla del script `5-Coberturas_corredores_nucleos.R`:
 
 Puedes cambiar modelos activos, intervalo por modelo, MSPA participantes, acuerdo mínimo, área mínima, coberturas y ámbito. Para usar un solo MSPA, desmarca los demás y usa acuerdo 1 de 1. La unión entre modelos se mantiene: basta uno dentro de cada MSPA. El área mínima se aplica a los parches después de los filtros.
 
-**Restaurar criterios del script R** restaura esos parámetros y vuelve a calcular. Las referencias originales permanecen fijas. Cuando cambias criterios, se retira la selección anterior del mapa y se bloquean sus descargas hasta recalcular.
+**Usar los criterios de la propuesta original** restaura esos parámetros y vuelve a calcular. Las referencias originales permanecen fijas. Cuando cambias criterios, se retira la selección anterior del mapa y se bloquean sus descargas hasta recalcular.
 
 ### Filtros compartidos
 
@@ -97,7 +125,7 @@ Se probaron en navegador la carga, los controles y la generación de núcleos. E
 
 Se recomienda un navegador moderno en computador de escritorio. Los valores de rank conservan Float32 original, sin cuantización. Los datos se cargan por localidad y modelo cuando se necesitan; el primer cálculo de consenso carga ocho mapas y puede tardar más. Los datos están comprimidos y se procesan en un Web Worker. Las localidades se descargan de la memoria del motor al cambiar de área.
 
-El mapa usa imagen satelital Esri por defecto; puede cambiarse a OpenStreetMap o desactivarse. La disponibilidad de cada proveedor puede variar según el navegador o la red. Las bibliotecas están incluidas, sin CDN; las teselas de los mapas base requieren conexión externa. La app no guarda selecciones entre sesiones: descarga el paquete o los parámetros para conservarlas. Para mapas y selecciones muy extensos, la vectorización y compresión pueden requerir varios segundos y suficiente memoria.
+El mapa usa OpenStreetMap por defecto; puede cambiarse a imagen satelital Esri o desactivarse. La disponibilidad de cada proveedor puede variar según el navegador o la red. Las bibliotecas están incluidas, sin CDN; las teselas de los mapas base requieren conexión externa. La app no guarda selecciones entre sesiones: descarga el paquete o los parámetros para conservarlas. Para mapas y selecciones muy extensos, la vectorización y compresión pueden requerir varios segundos y suficiente memoria.
 
 ## Actualizar datos en el futuro
 
